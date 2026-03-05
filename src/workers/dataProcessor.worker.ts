@@ -72,7 +72,8 @@ function buildSnapshot(
 
   const asks: PriceLevel[] = Array.from(currentAsks.entries())
     .map(([price, quantity]) => ({ price, quantity }))
-    .sort((a, b) => parseFloat(b.price) - parseFloat(a.price)) // 卖单降序（组件内再 reverse）/ Asks descending (component reverses)
+    // Keep closest asks: ascending sort then take first MAX_LEVELS
+    .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))
     .slice(0, MAX_LEVELS);
 
   return { type: "data", bids, asks, lastUpdateId };

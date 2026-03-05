@@ -48,12 +48,9 @@ function useContainerHeight(
   return height;
 }
 
-function withTotal(
-  levels: { price: string; quantity: string }[],
-  maxRows: number,
-) {
+function withTotal(levels: { price: string; quantity: string }[]) {
   let runningTotal = 0;
-  return levels.slice(0, maxRows).map((level) => {
+  return levels.map((level) => {
     runningTotal += parseFloat(level.quantity);
     return {
       ...level,
@@ -86,14 +83,19 @@ export default function OrderBook({
     [bids, priceBucket],
   );
 
-  const asksWithTotal = useMemo(
-    () =>
-      withTotal(aggregatedAsks, Math.floor(askHeight / ROW_HEIGHT)).reverse(),
-    [aggregatedAsks, askHeight],
-  );
+  const asksWithTotal = useMemo(() => {
+    const askRowsDesc = aggregatedAsks.slice(
+      0,
+      Math.floor(askHeight / ROW_HEIGHT),
+    );
+    // calculated from the best ask (closest to mid) outward.
+    const askRowsAscWithTotal = withTotal([...askRowsDesc].reverse());
+    return askRowsAscWithTotal.reverse();
+  }, [aggregatedAsks, askHeight]);
 
   const bidsWithTotal = useMemo(
-    () => withTotal(aggregatedBids, Math.floor(bidHeight / ROW_HEIGHT)),
+    () =>
+      withTotal(aggregatedBids.slice(0, Math.floor(bidHeight / ROW_HEIGHT))),
     [aggregatedBids, bidHeight],
   );
 
@@ -155,7 +157,7 @@ export default function OrderBook({
       <div className="flex justify-between px-3 py-1 text-xs text-gray-500">
         <span>价格({currentMarket.quoteAsset})</span>
         <span>数量({currentMarket.baseAsset})</span>
-        <span>成交额({currentMarket.quoteAsset})</span>
+        <span>累计({currentMarket.baseAsset})</span>
       </div>
 
       {/* 卖单区域 / Asks area */}
