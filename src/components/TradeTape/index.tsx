@@ -9,6 +9,7 @@ import { CSSProperties, useEffect, useRef } from "react";
 import { List } from "react-window";
 import type { ListImperativeAPI } from "react-window";
 import { useTradeStore } from "@/stores/tradeStore";
+import { useMarketStore } from "@/stores/marketStore";
 import { Trade } from "@/types/trade";
 import { formatPrice, formatQuantity, formatTime } from "@/lib/utils";
 
@@ -57,6 +58,7 @@ export default function TradeTape({
   quantityPrecision = 6,
 }: TradeTapeProps) {
   const trades = useTradeStore((state) => state.trades);
+  const currentMarket = useMarketStore((state) => state.currentMarket);
   const listRef = useRef<ListImperativeAPI | null>(null);
 
   // Auto-scroll to top when new trades arrive
@@ -69,8 +71,8 @@ export default function TradeTape({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-500 border-b border-gray-700">
         <span className="w-14 shrink-0">时间</span>
-        <span>价格(USDT)</span>
-        <span>数量(BTC)</span>
+        <span>价格({currentMarket.quoteAsset})</span>
+        <span>数量({currentMarket.baseAsset})</span>
       </div>
 
       {/* Trade List */}

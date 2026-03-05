@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useMarketStore } from "@/stores/marketStore";
 
 const PCT_SHORTCUTS = [25, 50, 75, 100] as const;
 
@@ -34,6 +35,7 @@ interface OrderFormProps {
 }
 
 function OrderForm({ side }: OrderFormProps) {
+  const currentMarket = useMarketStore((state) => state.currentMarket);
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -53,7 +55,7 @@ function OrderForm({ side }: OrderFormProps) {
     }
     setErrors({});
     toast.success(isBuy ? "买入委托成功" : "卖出委托成功", {
-      description: `${quantity} BTC @ ${price} USDT`,
+      description: `${quantity} ${currentMarket.baseAsset} @ ${price} ${currentMarket.quoteAsset}`,
       duration: 3000,
     });
     setPrice("");
@@ -63,12 +65,14 @@ function OrderForm({ side }: OrderFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-3 h-full" noValidate>
       <h3 className={`text-sm font-semibold ${isBuy ? "text-green-400" : "text-red-400"}`}>
-        {label} BTC
+        {label} {currentMarket.baseAsset}
       </h3>
 
       {/* Price */}
       <div className="space-y-1">
-        <Label className="text-xs text-gray-500">价格</Label>
+        <Label className="text-xs text-gray-500">
+          价格({currentMarket.quoteAsset})
+        </Label>
         <div className="relative">
           <Input
             type="number"
@@ -85,7 +89,7 @@ function OrderForm({ side }: OrderFormProps) {
             }`}
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
-            USDT
+            {currentMarket.quoteAsset}
           </span>
         </div>
         {errors.price && (
@@ -95,7 +99,9 @@ function OrderForm({ side }: OrderFormProps) {
 
       {/* Quantity */}
       <div className="space-y-1">
-        <Label className="text-xs text-gray-500">数量</Label>
+        <Label className="text-xs text-gray-500">
+          数量({currentMarket.baseAsset})
+        </Label>
         <div className="relative">
           <Input
             type="number"
@@ -112,7 +118,7 @@ function OrderForm({ side }: OrderFormProps) {
             }`}
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
-            BTC
+            {currentMarket.baseAsset}
           </span>
         </div>
         {errors.quantity && (
@@ -140,7 +146,9 @@ function OrderForm({ side }: OrderFormProps) {
       {/* Available */}
       <div className="flex justify-between text-xs text-gray-500">
         <span>可用</span>
-        <span className="text-gray-400">-- {isBuy ? "USDT" : "BTC"}</span>
+        <span className="text-gray-400">
+          -- {isBuy ? currentMarket.quoteAsset : currentMarket.baseAsset}
+        </span>
       </div>
 
       <div className="flex-1" />

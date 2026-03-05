@@ -8,6 +8,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { List } from "react-window";
 import { useOrderBookStore } from "@/stores/orderBookStore";
+import { useMarketStore } from "@/stores/marketStore";
 import { formatPrice } from "@/lib/utils";
 import { aggregateByBucket, getBucketDecimals } from "@/lib/orderBook";
 import { BothIcon, BidsIcon, AsksIcon } from "./icons";
@@ -57,6 +58,7 @@ export default function OrderBook({
   pricePrecision = 2,
   quantityPrecision = 6,
 }: OrderBookProps) {
+  const currentMarket = useMarketStore((state) => state.currentMarket);
   const bids = useOrderBookStore((state) => state.orderBook.bids);
   const asks = useOrderBookStore((state) => state.orderBook.asks);
   const [viewMode, setViewMode] = useState<ViewMode>("both");
@@ -132,9 +134,9 @@ export default function OrderBook({
 
       {/* 表头 / Header */}
       <div className="flex justify-between px-3 py-1 text-xs text-gray-500">
-        <span>价格(USDT)</span>
-        <span>数量(BTC)</span>
-        <span>成交额</span>
+        <span>价格({currentMarket.quoteAsset})</span>
+        <span>数量({currentMarket.baseAsset})</span>
+        <span>成交额({currentMarket.quoteAsset})</span>
       </div>
 
       {/* 卖单区域 / Asks area */}

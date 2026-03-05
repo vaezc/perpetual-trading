@@ -41,6 +41,7 @@ export function useWebSocket(symbol: string) {
     if (!processor) return;
 
     setStreamError(null);
+    let active = true;
 
     // 切换市场时清空旧数据 / Clear stale data on market switch
     resetOrderBook();
@@ -63,6 +64,7 @@ export function useWebSocket(symbol: string) {
      * 连接时调用一次，Worker 检测到序列缺口时再次调用。
      */
     const fetchAndInitSnapshot = async (reason: "init" | "resync") => {
+      if (!active) return false;
       try {
         const res = await fetch(
           `${BINANCE_REST}/depth?symbol=${symbol}&limit=${SNAPSHOT_LIMIT}`,
@@ -81,7 +83,7 @@ export function useWebSocket(symbol: string) {
         const snapshot = (await res.json()) as OrderBookSnapshot;
         // 检查 effect 是否已清理，避免旧快照覆盖新状态
         // Check if effect was cleaned up to avoid stale snapshot overwriting new state
-        if (!aborted) {
+        if (!aborted && active) {
           await processor.initSnapshot(snapshot);
           setStreamError(null);
         }
@@ -102,10 +104,12 @@ export function useWebSocket(symbol: string) {
 
     // 处理订单簿数据 / Handle order book data
     const handleOrderBook = async (data: unknown) => {
+      if (!active) return;
       msgCount.current++;
       const result = await processor.processOrderBook(
         data as BinanceOrderBookData,
       );
+      if (!active) return;
 
       if (!result) return; // 限流或缓冲中 / Throttled or buffering
 
@@ -122,8 +126,10 @@ export function useWebSocket(symbol: string) {
 
     // 处理交易数据 / Handle trade data
     const handleTrade = async (data: unknown) => {
+      if (!active) return;
       msgCount.current++;
       const batch = await processor.addTrade(data as BinanceTradeData);
+      if (!active) return;
       if (batch && batch.length > 0) {
         // 标记为非紧急更新，React 可在有更高优先级任务时推迟渲染
         // Mark as non-urgent update — React may defer rendering if higher-priority work exists
@@ -143,6 +149,7 @@ export function useWebSocket(symbol: string) {
 
     // 注册状态变化处理器 / Register status change handler
     wsClient.current.onStatusChange((status) => {
+      if (!active) return;
       setConnectionStatus(status);
     });
 
@@ -154,6 +161,7 @@ export function useWebSocket(symbol: string) {
 
     // 清理函数 / Cleanup function
     return () => {
+      active = false;
       aborted = true; // 标记已清理，阻止过期快照写入 / Mark as cleaned up to block stale snapshot writes
       clearInterval(rateTimer);
       wsClient.current?.disconnect();
