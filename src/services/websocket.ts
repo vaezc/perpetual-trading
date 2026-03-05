@@ -3,7 +3,13 @@
  * WebSocket 服务 - 币安市场数据流
  */
 
-import { WebSocketConfig, WebSocketStatus, MessageType } from '@/types/websocket';
+import {
+  WebSocketConfig,
+  WebSocketStatus,
+  MessageType,
+} from "@/types/websocket";
+
+type MessageHandler = (data: unknown) => void;
 
 /**
  * WebSocket Client for Binance Market Streams
@@ -15,13 +21,13 @@ export class BinanceWebSocketClient {
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
-  private status: WebSocketStatus = 'disconnected';
-  private messageHandlers: Map<MessageType, (data: any) => void> = new Map();
+  private status: WebSocketStatus = "disconnected";
+  private messageHandlers: Map<MessageType, MessageHandler> = new Map();
   private statusChangeHandlers: ((status: WebSocketStatus) => void)[] = [];
 
   constructor(config: Partial<WebSocketConfig> = {}) {
     this.config = {
-      url: config.url || 'wss://stream.binance.com:9443/ws',
+      url: config.url || "wss://stream.binance.com:443",
       reconnectInterval: config.reconnectInterval || 3000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
       heartbeatInterval: config.heartbeatInterval || 30000,
@@ -34,20 +40,20 @@ export class BinanceWebSocketClient {
    */
   connect(streams: string[]): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.warn('WebSocket already connected');
+      console.warn("WebSocket already connected");
       return;
     }
 
     // 构建订阅 URL / Build subscription URL
-    const streamParams = streams.join('/');
-    const url = `${this.config.url}/${streamParams}`;
+    const streamParams = streams.join("/");
+    const url = `${this.config.url}/stream?streams=${streamParams}`;
 
     try {
       this.ws = new WebSocket(url);
       this.setupEventHandlers();
-      this.updateStatus('connecting');
+      this.updateStatus("connecting");
     } catch (error) {
-      console.error('Failed to create WebSocket:', error);
+      console.error("Failed to create WebSocket:", error);
       this.handleReconnect();
     }
   }
@@ -60,8 +66,8 @@ export class BinanceWebSocketClient {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
-      this.updateStatus('connected');
+      console.log("WebSocket connected");
+      this.updateStatus("connected");
       this.reconnectAttempts = 0;
       this.startHeartbeat();
     };
@@ -71,18 +77,18 @@ export class BinanceWebSocketClient {
         const data = JSON.parse(event.data);
         this.handleMessage(data);
       } catch (error) {
-        console.error('Failed to parse message:', error);
+        console.error("Failed to parse message:", error);
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      this.updateStatus('error');
+      console.error("WebSocket error:", error);
+      this.updateStatus("error");
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket closed');
-      this.updateStatus('disconnected');
+      console.log("WebSocket closed");
+      this.updateStatus("disconnected");
       this.stopHeartbeat();
       this.handleReconnect();
     };
@@ -92,16 +98,18 @@ export class BinanceWebSocketClient {
    * Handle incoming messages
    * 处理接收到的消息
    */
-  private handleMessage(data: any): void {
-    // 币安 WebSocket 消息格式 / Binance WebSocket message format
-    const eventType = data.e; // 事件类型 / Event type
+  private handleMessage(data: unknown): void {
+    // 组合流消息格式 / Combined stream message format
+    if (isObjectWithStream(data)) {
+      const eventData = data.data;
+      if (!isObjectWithEventType(eventData)) return;
 
-    if (eventType === 'depthUpdate') {
-      // 订单簿更新 / Order book update
-      this.notifyHandlers('orderbook', data);
-    } else if (eventType === 'trade') {
-      // 交易更新 / Trade update
-      this.notifyHandlers('trade', data);
+      const eventType = eventData.e;
+      if (eventType === "depthUpdate") {
+        this.notifyHandlers("orderbook", eventData);
+      } else if (eventType === "trade") {
+        this.notifyHandlers("trade", eventData);
+      }
     }
   }
 
@@ -109,7 +117,7 @@ export class BinanceWebSocketClient {
    * Notify registered handlers
    * 通知已注册的处理器
    */
-  private notifyHandlers(type: MessageType, data: any): void {
+  private notifyHandlers(type: MessageType, data: unknown): void {
     const handler = this.messageHandlers.get(type);
     if (handler) {
       handler(data);
@@ -123,13 +131,13 @@ export class BinanceWebSocketClient {
   private handleReconnect(): void {
     const maxAttempts = this.config.maxReconnectAttempts || 10;
     if (this.reconnectAttempts >= maxAttempts) {
-      console.error('Max reconnect attempts reached');
-      this.updateStatus('error');
+      console.error("Max reconnect attempts reached");
+      this.updateStatus("error");
       return;
     }
 
     this.reconnectAttempts++;
-    this.updateStatus('reconnecting');
+    this.updateStatus("reconnecting");
 
     this.reconnectTimer = setTimeout(() => {
       console.log(`Reconnecting... (${this.reconnectAttempts}/${maxAttempts})`);
@@ -166,14 +174,14 @@ export class BinanceWebSocketClient {
    */
   private updateStatus(status: WebSocketStatus): void {
     this.status = status;
-    this.statusChangeHandlers.forEach(handler => handler(status));
+    this.statusChangeHandlers.forEach((handler) => handler(status));
   }
 
   /**
    * Register message handler
    * 注册消息处理器
    */
-  on(type: MessageType, handler: (data: any) => void): void {
+  on(type: MessageType, handler: MessageHandler): void {
     this.messageHandlers.set(type, handler);
   }
 
@@ -210,7 +218,7 @@ export class BinanceWebSocketClient {
       this.ws = null;
     }
 
-    this.updateStatus('disconnected');
+    this.updateStatus("disconnected");
   }
 }
 
@@ -221,8 +229,24 @@ export class BinanceWebSocketClient {
 export function createBinanceStreams(symbol: string): string[] {
   const normalizedSymbol = symbol.toLowerCase();
   return [
-    `${normalizedSymbol}@depth@100ms`,  // 订单簿深度（100ms更新）
-    `${normalizedSymbol}@trade`,         // 实时交易
+    `${normalizedSymbol}@depth@100ms`, // 订单簿深度（100ms更新）
+    `${normalizedSymbol}@trade`, // 实时交易
   ];
 }
 
+function isObjectWithEventType(data: unknown): data is { e: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    typeof (data as { e?: unknown }).e === "string"
+  );
+}
+
+function isObjectWithStream(data: unknown): data is { stream: string; data: unknown } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    typeof (data as { stream?: unknown }).stream === "string" &&
+    "data" in data
+  );
+}

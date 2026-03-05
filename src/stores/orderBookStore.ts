@@ -3,8 +3,8 @@
  * 订单簿状态管理
  */
 
-import { create } from 'zustand';
-import { OrderBook, PriceLevel } from '@/types/orderBook';
+import { create } from "zustand";
+import { OrderBook, PriceLevel } from "@/types/orderBook";
 
 interface OrderBookState {
   orderBook: OrderBook;
@@ -13,7 +13,7 @@ interface OrderBookState {
   reset: () => void;
 }
 
-const MAX_LEVELS = 12; // 固定显示12档
+const MAX_LEVELS = 50; // 存储更多档位数据
 
 const initialOrderBook: OrderBook = {
   bids: [],
@@ -58,7 +58,7 @@ export const useOrderBookStore = create<OrderBookState>((set) => ({
 function applyDeltas(
   currentLevels: PriceLevel[],
   deltas: [string, string][],
-  maxLevels: number
+  maxLevels: number,
 ): PriceLevel[] {
   const levelMap = new Map<string, string>();
 
@@ -78,7 +78,7 @@ function applyDeltas(
 
   // 转换回数组并排序，限制为固定档位数量
   const levels: PriceLevel[] = Array.from(levelMap.entries()).map(
-    ([price, quantity]) => ({ price, quantity })
+    ([price, quantity]) => ({ price, quantity }),
   );
 
   return levels

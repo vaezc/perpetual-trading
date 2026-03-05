@@ -6,7 +6,7 @@
 "use client";
 
 import { memo } from "react";
-import { List as FixedSizeList } from "react-window";
+import { List, type RowComponentProps } from "react-window";
 import { useTradeStore } from "@/stores/tradeStore";
 import { Trade } from "@/types/trade";
 import { formatPrice, formatQuantity, formatTime } from "@/lib/utils";
@@ -22,7 +22,10 @@ export default function TradeTape({
 }: TradeTapeProps) {
   const trades = useTradeStore((state) => state.trades);
 
-  const TradeRowComponent = ({ index, style }: any) => (
+  const TradeRowComponent = ({
+    index,
+    style,
+  }: RowComponentProps<Record<string, never>>) => (
     <TradeRow
       trade={trades[index]}
       style={style}
@@ -32,7 +35,7 @@ export default function TradeTape({
   );
 
   return (
-    <div className="flex flex-col h-full border rounded-lg bg-gray-900">
+    <div className="flex flex-col h-full border rounded-lg bg-gray-900 border-gray-700">
       {/* Header / 表头 */}
       <div className="flex justify-between px-4 py-2 text-xs text-gray-400 border-b border-gray-700">
         <span>时间</span>
@@ -42,9 +45,8 @@ export default function TradeTape({
 
       {/* Trade List / 交易列表 */}
       <div className="flex-1 overflow-hidden">
-        <FixedSizeList
-          height={540}
-          width="100%"
+        <List
+          className="custom-scrollbar"
           rowCount={trades.length}
           rowHeight={20}
           rowComponent={TradeRowComponent}
