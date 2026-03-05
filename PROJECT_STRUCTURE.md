@@ -122,9 +122,10 @@ WebSocket → Worker (Processing) → Main Thread (Rendering)
 
 **订单簿**:
 
-- Map 最多保留 200 条价格档位
-- 超出时只保留价格最优的部分（买单取最高价，卖单取最低价）
-- 每次返回最新的完整快照
+- ~~Map 最多保留 200 条价格档位~~ ← 已移除
+- 引入序列缺口处理（gap detection）后，每个增量更新均经过连续性校验，保证数据顺序正确
+- Latest-Wins 裁剪会删除合法价位，与 gap detection 的正确性保证存在冲突，因此移除
+- 快照从 1000 档降到 100 档（与 MAX_LEVELS=50 对齐，减少无效数据传输）
 
 **交易数据**:
 
@@ -160,6 +161,42 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
 
 订单簿是交易决策的核心数据，价格档位需要实时反映，延迟渲染会造成信息滞后，影响交易判断。TradeTape 是历史流水，短暂的渲染延迟对用户无感知影响。
 
+#### 订单簿序列缺口处理 / Order Book Sequence Gap Handling
+
+遵循 Binance 官方文档的本地订单簿维护流程：
+
+**同步流程 / Sync Flow**：
+
+```
+1. 建立 WebSocket 连接，Worker 开始缓冲所有事件
+   Connect WebSocket — Worker buffers all incoming events
+
+2. 并行拉取 REST 快照
+   GET /api/v3/depth?symbol=BTCUSDT&limit=1000
+
+3. 调用 worker.initSnapshot(snapshot)：
+   - 丢弃 u <= snapshot.lastUpdateId 的缓冲事件
+   - 找到首个合法事件：U <= lastUpdateId+1 AND u >= lastUpdateId+1
+   - 按序重放后续缓冲事件
+   - 进入 synced 状态
+
+4. 后续每个事件校验：event.pu === lastProcessedUpdateId
+   - 通过 → 应用增量，更新 lastProcessedUpdateId
+   - 不通过 → 返回 { type: 'resync' }，触发重新拉取快照
+```
+
+**序列字段说明 / Sequence Fields**：
+
+| 字段 | 含义 |
+|------|------|
+| `U`  | 本次事件首个更新ID / First update ID in event |
+| `u`  | 本次事件末个更新ID / Final update ID in event |
+| `pu` | 上一事件末个更新ID / Previous final update ID |
+
+**为什么 `@depth@100ms` 使用 `pu` 而非 `U` 连续性检测 / Why use `pu` not `U` for continuity**：
+
+`pu` 直接等于上一事件的 `u`，单字段即可完成连续性判断；而 `U` 需要计算 `prevU + 1`，在 100ms 聚合流中更容易产生误判。
+
 #### 其他优化 / Other Optimizations
 
 - ✅ **react-window** 虚拟化列表渲染
@@ -188,6 +225,7 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
    - 我们的场景是"累积所有更新 + 定期输出快照"
 
 2. **更精确的控制**
+
    ```typescript
    // 当前实现：累积数据 + 定期返回
    processOrderBook(data) {
@@ -203,22 +241,3 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
 3. **零依赖** - Worker 文件保持轻量，不需要打包 lodash
 
 4. **Latest-Wins 策略** - 需要在限流期间持续更新内存状态
-
-## Next Steps / 下一步计划
-
-1. ✅ 安装依赖 (zustand, react-window)
-2. ✅ 创建目录结构
-3. ✅ 定义 TypeScript 类型
-4. ⏳ 实现 WebSocket 服务
-5. ⏳ 创建 Zustand stores
-6. ⏳ 构建 UI 组件
-7. ⏳ 实现性能优化
-8. ⏳ 部署到 Vercel
-
-## Key Files to Implement Next / 接下来要实现的关键文件
-
-1. `src/services/websocket.ts` - WebSocket 连接管理器
-2. `src/stores/orderBookStore.ts` - 订单簿状态（支持增量更新）
-3. `src/stores/tradeStore.ts` - 交易历史状态
-4. `src/components/OrderBook/index.tsx` - 虚拟化订单簿组件
-5. `src/components/TradeTape/index.tsx` - 虚拟化交易流水组件

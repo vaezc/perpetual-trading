@@ -8,15 +8,15 @@ import { wrap, Remote } from "comlink";
 import type {
   BinanceOrderBookData,
   BinanceTradeData,
+  OrderBookSnapshot,
+  OrderBookResult,
   ProcessedTrade,
-  ProcessedOrderBook,
 } from "@/types/worker";
 
 type DataProcessor = {
   reset: () => Promise<void>;
-  processOrderBook: (
-    data: BinanceOrderBookData,
-  ) => Promise<ProcessedOrderBook | null>;
+  initSnapshot: (snapshot: OrderBookSnapshot) => Promise<void>;
+  processOrderBook: (data: BinanceOrderBookData) => Promise<OrderBookResult>;
   addTrade: (data: BinanceTradeData) => Promise<ProcessedTrade[] | null>;
 };
 
@@ -33,6 +33,7 @@ export function useDataProcessor() {
     );
     const wrapped = wrap<DataProcessor>(workerRef.current);
     // Comlink proxy 的 typeof 是 'function'，需要用函数形式避免 React 将其当作 updater 调用
+    // Comlink proxy typeof is 'function' — wrap in function to prevent React calling it as updater
     setProcessor(() => wrapped);
 
     return () => {

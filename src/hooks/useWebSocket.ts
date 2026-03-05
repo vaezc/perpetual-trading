@@ -12,9 +12,15 @@ import { useOrderBookStore } from "@/stores/orderBookStore";
 import { useTradeStore } from "@/stores/tradeStore";
 import { useMarketStore } from "@/stores/marketStore";
 import { useDataProcessor } from "./useDataProcessor";
-import type { BinanceOrderBookData, BinanceTradeData } from "@/types/worker";
+import type {
+  BinanceOrderBookData,
+  BinanceTradeData,
+  OrderBookSnapshot,
+} from "@/types/worker";
 
-const RATE_INTERVAL_MS = 1000;
+const RATE_INTERVAL_MS = 1000; // 消息速率统计间隔 / Message rate calculation interval
+const SNAPSHOT_LIMIT = 100; // REST 快照深度档位数，与 MAX_LEVELS 对齐 / REST snapshot depth, aligned with MAX_LEVELS
+const BINANCE_REST = "https://api.binance.com/api/v3";
 
 export function useWebSocket(symbol: string) {
   const wsClient = useRef<BinanceWebSocketClient | null>(null);
@@ -36,20 +42,60 @@ export function useWebSocket(symbol: string) {
     resetOrderBook();
     resetTrades();
     // Fire-and-forget reset，worker 内部同步执行无需等待结果
+    // Fire-and-forget reset — worker executes synchronously, no need to await
     void processor.reset();
 
     // 创建 WebSocket 客户端 / Create WebSocket client
     wsClient.current = new BinanceWebSocketClient();
 
+    // 用于取消过期快照请求，防止 effect 清理后旧快照污染新状态
+    // Abort flag to prevent stale snapshot from corrupting state after cleanup
+    let aborted = false;
+
+    /**
+     * Fetch REST snapshot and pass it to the worker.
+     * Called once on connect, and again whenever the worker signals a sequence gap.
+     * 拉取 REST 快照并传给 Worker。
+     * 连接时调用一次，Worker 检测到序列缺口时再次调用。
+     */
+    const fetchAndInitSnapshot = async () => {
+      try {
+        const res = await fetch(
+          `${BINANCE_REST}/depth?symbol=${symbol}&limit=${SNAPSHOT_LIMIT}`,
+        );
+        if (!res.ok) {
+          console.error(`[OrderBook] Snapshot fetch failed: HTTP ${res.status}`);
+          return;
+        }
+        const snapshot = (await res.json()) as OrderBookSnapshot;
+        // 检查 effect 是否已清理，避免旧快照覆盖新状态
+        // Check if effect was cleaned up to avoid stale snapshot overwriting new state
+        if (!aborted) {
+          await processor.initSnapshot(snapshot);
+        }
+      } catch (err) {
+        console.error("Failed to fetch order book snapshot / 快照拉取失败:", err);
+      }
+    };
+
     // 处理订单簿数据 / Handle order book data
     const handleOrderBook = async (data: unknown) => {
       msgCount.current++;
-      const processed = await processor.processOrderBook(
+      const result = await processor.processOrderBook(
         data as BinanceOrderBookData,
       );
-      if (processed) {
-        setOrderBook(processed.bids, processed.asks, processed.lastUpdateId);
+
+      if (!result) return; // 限流或缓冲中 / Throttled or buffering
+
+      if (result.type === "resync") {
+        // 检测到序列缺口，重新拉取快照重新同步
+        // Sequence gap detected — re-fetch snapshot to resync
+        console.warn("[OrderBook] Sequence gap detected, resyncing...");
+        void fetchAndInitSnapshot();
+        return;
       }
+
+      setOrderBook(result.bids, result.asks, result.lastUpdateId);
     };
 
     // 处理交易数据 / Handle trade data
@@ -58,6 +104,7 @@ export function useWebSocket(symbol: string) {
       const batch = await processor.addTrade(data as BinanceTradeData);
       if (batch && batch.length > 0) {
         // 标记为非紧急更新，React 可在有更高优先级任务时推迟渲染
+        // Mark as non-urgent update — React may defer rendering if higher-priority work exists
         startTransition(() => addTrades(batch));
       }
     };
@@ -77,12 +124,15 @@ export function useWebSocket(symbol: string) {
       setConnectionStatus(status);
     });
 
-    // 连接 WebSocket / Connect WebSocket
+    // 连接 WebSocket，连接成功后立即拉取快照
+    // Connect WebSocket, then immediately fetch snapshot
     const streams = createBinanceStreams(symbol);
     wsClient.current.connect(streams);
+    void fetchAndInitSnapshot();
 
     // 清理函数 / Cleanup function
     return () => {
+      aborted = true; // 标记已清理，阻止过期快照写入 / Mark as cleaned up to block stale snapshot writes
       clearInterval(rateTimer);
       wsClient.current?.disconnect();
     };

@@ -4,17 +4,26 @@
  */
 
 export interface BinanceOrderBookData {
-  b: [string, string][]; // bids
-  a: [string, string][]; // asks
-  u: number; // update id
+  U: number;             // First update ID in event / 本次事件首个更新ID
+  u: number;             // Final update ID in event / 本次事件末个更新ID
+  // Note: pu (previous final update ID) is futures-only, not present in spot @depth streams
+  // pu 字段仅存在于合约市场，现货 @depth 流不提供
+  b: [string, string][]; // Bids / 买单
+  a: [string, string][]; // Asks / 卖单
 }
 
 export interface BinanceTradeData {
-  t: number; // trade id
-  p: string; // price
-  q: string; // quantity
-  T: number; // timestamp
-  m: boolean; // is buyer maker
+  t: number;   // trade id
+  p: string;   // price
+  q: string;   // quantity
+  T: number;   // timestamp
+  m: boolean;  // is buyer maker
+}
+
+export interface OrderBookSnapshot {
+  lastUpdateId: number;
+  bids: [string, string][];
+  asks: [string, string][];
 }
 
 export interface ProcessedTrade {
@@ -30,8 +39,8 @@ export interface PriceLevel {
   quantity: string;
 }
 
-export interface ProcessedOrderBook {
-  bids: PriceLevel[];
-  asks: PriceLevel[];
-  lastUpdateId: number;
-}
+/** null = throttled/buffering, resync = gap detected, data = normal output */
+export type OrderBookResult =
+  | { type: "data"; bids: PriceLevel[]; asks: PriceLevel[]; lastUpdateId: number }
+  | { type: "resync" }
+  | null;
