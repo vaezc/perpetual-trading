@@ -30,6 +30,8 @@ export function useWebSocket(symbol: string) {
     (state) => state.setConnectionStatus,
   );
   const updateStats = useMarketStore((state) => state.updateStats);
+  const setStreamError = useMarketStore((state) => state.setStreamError);
+  const retryNonce = useMarketStore((state) => state.retryNonce);
   const resetOrderBook = useOrderBookStore((state) => state.reset);
   const resetTrades = useTradeStore((state) => state.reset);
   const processor = useDataProcessor();
@@ -37,6 +39,8 @@ export function useWebSocket(symbol: string) {
 
   useEffect(() => {
     if (!processor) return;
+
+    setStreamError(null);
 
     // 切换市场时清空旧数据 / Clear stale data on market switch
     resetOrderBook();
@@ -58,23 +62,41 @@ export function useWebSocket(symbol: string) {
      * 拉取 REST 快照并传给 Worker。
      * 连接时调用一次，Worker 检测到序列缺口时再次调用。
      */
-    const fetchAndInitSnapshot = async () => {
+    const fetchAndInitSnapshot = async (reason: "init" | "resync") => {
       try {
         const res = await fetch(
           `${BINANCE_REST}/depth?symbol=${symbol}&limit=${SNAPSHOT_LIMIT}`,
         );
         if (!res.ok) {
-          console.error(`[OrderBook] Snapshot fetch failed: HTTP ${res.status}`);
-          return;
+          console.error(
+            `[OrderBook] Snapshot fetch failed: HTTP ${res.status}`,
+          );
+          setStreamError(
+            reason === "resync"
+              ? "订单簿重同步失败，请重试。"
+              : "订单簿快照拉取失败，请重试。",
+          );
+          return false;
         }
         const snapshot = (await res.json()) as OrderBookSnapshot;
         // 检查 effect 是否已清理，避免旧快照覆盖新状态
         // Check if effect was cleaned up to avoid stale snapshot overwriting new state
         if (!aborted) {
           await processor.initSnapshot(snapshot);
+          setStreamError(null);
         }
+        return true;
       } catch (err) {
-        console.error("Failed to fetch order book snapshot / 快照拉取失败:", err);
+        console.error(
+          "Failed to fetch order book snapshot / 快照拉取失败:",
+          err,
+        );
+        setStreamError(
+          reason === "resync"
+            ? "订单簿重同步失败，请重试。"
+            : "订单簿快照拉取失败，请重试。",
+        );
+        return false;
       }
     };
 
@@ -91,7 +113,7 @@ export function useWebSocket(symbol: string) {
         // 检测到序列缺口，重新拉取快照重新同步
         // Sequence gap detected — re-fetch snapshot to resync
         console.warn("[OrderBook] Sequence gap detected, resyncing...");
-        void fetchAndInitSnapshot();
+        void fetchAndInitSnapshot("resync");
         return;
       }
 
@@ -128,7 +150,7 @@ export function useWebSocket(symbol: string) {
     // Connect WebSocket, then immediately fetch snapshot
     const streams = createBinanceStreams(symbol);
     wsClient.current.connect(streams);
-    void fetchAndInitSnapshot();
+    void fetchAndInitSnapshot("init");
 
     // 清理函数 / Cleanup function
     return () => {
@@ -136,5 +158,16 @@ export function useWebSocket(symbol: string) {
       clearInterval(rateTimer);
       wsClient.current?.disconnect();
     };
-  }, [symbol, setOrderBook, addTrades, setConnectionStatus, updateStats, resetOrderBook, resetTrades, processor]);
+  }, [
+    symbol,
+    setOrderBook,
+    addTrades,
+    setConnectionStatus,
+    updateStats,
+    setStreamError,
+    retryNonce,
+    resetOrderBook,
+    resetTrades,
+    processor,
+  ]);
 }

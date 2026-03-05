@@ -10,9 +10,13 @@ interface MarketState {
   currentMarket: MarketInfo;
   connectionStatus: ConnectionStatus;
   stats: MarketStats;
+  streamError: string | null;
+  retryNonce: number;
   setMarket: (market: MarketInfo) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   updateStats: (stats: Partial<MarketStats>) => void;
+  setStreamError: (message: string | null) => void;
+  requestRetry: () => void;
 }
 
 const defaultMarket: MarketInfo = {
@@ -34,6 +38,8 @@ export const useMarketStore = create<MarketState>((set) => ({
   currentMarket: defaultMarket,
   connectionStatus: 'disconnected',
   stats: defaultStats,
+  streamError: null,
+  retryNonce: 0,
 
   setMarket: (market) => set({ currentMarket: market }),
 
@@ -42,5 +48,12 @@ export const useMarketStore = create<MarketState>((set) => ({
   updateStats: (stats) =>
     set((state) => ({
       stats: { ...state.stats, ...stats }
+    })),
+
+  setStreamError: (message) => set({ streamError: message }),
+
+  requestRetry: () =>
+    set((state) => ({
+      retryNonce: state.retryNonce + 1,
     })),
 }));

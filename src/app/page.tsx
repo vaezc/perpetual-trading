@@ -15,6 +15,7 @@ import MarketSelector from "@/components/MarketSelector";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import MessageRate from "@/components/MessageRate";
 import GridPanel from "@/components/GridPanel";
+import { Button } from "@/components/ui/button";
 import { useMarketStore } from "@/stores/marketStore";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -23,6 +24,9 @@ import "react-resizable/css/styles.css";
 export default function Home() {
   const currentMarket = useMarketStore((state) => state.currentMarket);
   const connectionStatus = useMarketStore((state) => state.connectionStatus);
+  const streamError = useMarketStore((state) => state.streamError);
+  const requestRetry = useMarketStore((state) => state.requestRetry);
+  const setStreamError = useMarketStore((state) => state.setStreamError);
   const { width, containerRef } = useContainerWidth();
   const isLoading = connectionStatus === "connecting" || connectionStatus === "reconnecting";
 
@@ -66,6 +70,33 @@ export default function Home() {
           <MessageRate />
         </div>
       </header>
+
+      {streamError && (
+        <div className="px-4 py-2 border-b border-red-800 bg-red-950/40 flex items-center justify-between gap-3">
+          <p className="text-xs text-red-300">{streamError}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setStreamError(null);
+                requestRetry();
+              }}
+              className="h-7 px-2 text-xs border-red-700 text-red-200 hover:bg-red-900/40 hover:text-red-100"
+            >
+              重试
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setStreamError(null)}
+              className="h-7 px-2 text-xs text-gray-300 hover:text-white hover:bg-gray-800"
+            >
+              关闭
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Grid Layout / 网格布局 */}
       <div ref={containerRef} className="flex-1 overflow-hidden">
