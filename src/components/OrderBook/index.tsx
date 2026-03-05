@@ -73,6 +73,12 @@ export default function OrderBook({
 
   const askHeight = useContainerHeight(askContainerRef, viewMode);
   const bidHeight = useContainerHeight(bidContainerRef, viewMode);
+  const askVisibleRows = Math.max(1, Math.floor(askHeight / ROW_HEIGHT));
+  const bidVisibleRows = Math.max(1, Math.floor(bidHeight / ROW_HEIGHT));
+  const askRowHeight =
+    askVisibleRows > 0 ? askHeight / askVisibleRows : ROW_HEIGHT;
+  const bidRowHeight =
+    bidVisibleRows > 0 ? bidHeight / bidVisibleRows : ROW_HEIGHT;
 
   const aggregatedAsks = useMemo(
     () => aggregateByBucket(asks, "asks", priceBucket),
@@ -84,19 +90,15 @@ export default function OrderBook({
   );
 
   const asksWithTotal = useMemo(() => {
-    const askRowsDesc = aggregatedAsks.slice(
-      0,
-      Math.floor(askHeight / ROW_HEIGHT),
-    );
-    // calculated from the best ask (closest to mid) outward.
-    const askRowsAscWithTotal = withTotal([...askRowsDesc].reverse());
+    const askRowsAsc = aggregatedAsks.slice(0, askVisibleRows);
+    // Asks are accumulated from best ask outward, then rendered high->low.
+    const askRowsAscWithTotal = withTotal(askRowsAsc);
     return askRowsAscWithTotal.reverse();
-  }, [aggregatedAsks, askHeight]);
+  }, [aggregatedAsks, askVisibleRows]);
 
   const bidsWithTotal = useMemo(
-    () =>
-      withTotal(aggregatedBids.slice(0, Math.floor(bidHeight / ROW_HEIGHT))),
-    [aggregatedBids, bidHeight],
+    () => withTotal(aggregatedBids.slice(0, bidVisibleRows)),
+    [aggregatedBids, bidVisibleRows],
   );
 
   const { bidRatio, askRatio } = useMemo(() => {
@@ -166,7 +168,7 @@ export default function OrderBook({
           <List
             style={{ height: askHeight }}
             rowCount={asksWithTotal.length}
-            rowHeight={ROW_HEIGHT}
+            rowHeight={askRowHeight}
             rowComponent={AskRow}
             rowProps={{
               levels: asksWithTotal,
@@ -192,7 +194,7 @@ export default function OrderBook({
           <List
             style={{ height: bidHeight }}
             rowCount={bidsWithTotal.length}
-            rowHeight={ROW_HEIGHT}
+            rowHeight={bidRowHeight}
             rowComponent={BidRow}
             rowProps={{
               levels: bidsWithTotal,

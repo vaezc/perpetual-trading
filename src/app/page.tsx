@@ -29,8 +29,11 @@ export default function Home() {
   const setStreamError = useMarketStore((state) => state.setStreamError);
   const { width, containerRef, mounted } = useContainerWidth({
     measureBeforeMount: true,
+    initialWidth: 0,
   });
-  const isLoading = connectionStatus === "connecting" || connectionStatus === "reconnecting";
+  const ready = mounted && width > 0;
+  const isLoading =
+    connectionStatus === "connecting" || connectionStatus === "reconnecting";
 
   // 连接 WebSocket
   useWebSocket(currentMarket.symbol);
@@ -63,7 +66,9 @@ export default function Home() {
     <div className="h-screen bg-black text-white flex flex-col">
       {/* Header / 顶部栏 */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-gray-800 shrink-0">
-        <h1 className="text-sm font-semibold text-white tracking-wide">Perpetual Trading</h1>
+        <h1 className="text-sm font-semibold text-white tracking-wide">
+          Perpetual Trading
+        </h1>
         <div className="flex items-center gap-3">
           <MarketSelector />
           <div className="w-px h-4 bg-gray-700" />
@@ -102,7 +107,7 @@ export default function Home() {
 
       {/* Grid Layout / 网格布局 */}
       <div ref={containerRef} className="flex-1 overflow-hidden">
-        {mounted ? (
+        {ready ? (
           <ResponsiveGridLayout
             className="layout"
             layouts={layouts}
@@ -136,22 +141,8 @@ export default function Home() {
             </div>
           </ResponsiveGridLayout>
         ) : (
-          <div className="h-full p-2 grid grid-cols-12 gap-2">
-            <div className="col-span-3 h-full">
-              <GridPanel isLoading skeleton={<OrderBookSkeleton />}>
-                <div />
-              </GridPanel>
-            </div>
-            <div className="col-span-3 h-full">
-              <GridPanel isLoading skeleton={<TradeTapeSkeleton />}>
-                <div />
-              </GridPanel>
-            </div>
-            <div className="col-span-6 h-full">
-              <GridPanel isLoading>
-                <div />
-              </GridPanel>
-            </div>
+          <div className="h-full p-2">
+            <div className="h-full rounded-lg border border-gray-800 bg-gray-900/40 animate-pulse" />
           </div>
         )}
       </div>

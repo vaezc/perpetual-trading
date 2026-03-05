@@ -33,6 +33,8 @@ export function aggregateByBucket(
 
   return Array.from(bucketed.entries())
     .map(([price, quantity]) => ({ price, quantity: quantity.toString() }))
-    .sort((a, b) => Number(b.price) - Number(a.price));
+    .sort((a, b) =>
+      side === "bids" ? Number(b.price) - Number(a.price) : Number(a.price) - Number(b.price),
+    );
 }
 

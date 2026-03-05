@@ -162,13 +162,19 @@ const dataProcessor = {
       return null;
     }
 
+    // Drop stale/duplicate events that are already covered.
+    // 丢弃已被处理覆盖的旧事件/重复事件，避免误判为 gap。
+    if (data.u <= lastProcessedUpdateId) {
+      return null;
+    }
+
     // 合约深度流连续性校验：当前事件 pu 必须等于上一事件的 u
     // Futures continuity check: current event.pu must equal previous event.u
     if (data.pu !== lastProcessedUpdateId) {
       // 检测到序列缺口，重置状态并通知调用方重新同步
       // Gap detected — reset state and signal caller to re-fetch snapshot
       console.warn(
-        `[Worker] Gap detected: data.pu=${data.pu}, expected=${lastProcessedUpdateId}`,
+        `[Worker] Gap detected: U=${data.U}, u=${data.u}, pu=${data.pu}, expected=${lastProcessedUpdateId}`,
       );
       syncState = "waiting_snapshot";
       eventBuffer = [];
