@@ -5,7 +5,7 @@
 - GitHub Repository: `https://github.com/vaezc/perpetual-trading`
 - Public Deployment (Vercel): `https://perpetual-trading-two.vercel.app`
 - Backend Feed:
-  - WebSocket: `wss://fstream.binance.com/stream?streams=<symbol>@depth@100ms/<symbol>@trade`
+  - WebSocket: `wss://fstream.binance.com/stream?streams=<symbol>@depth/<symbol>@trade`
   - Snapshot REST: `https://fapi.binance.com/fapi/v1/depth?symbol=<SYMBOL>&limit=1000`
 
 ## Directory Overview / 目录概览
@@ -59,7 +59,7 @@ src/
 
 #### OrderBook Pipeline (Futures) / 订单簿处理链路（合约）
 
-1. `BinanceWebSocketClient` 订阅 `@depth@100ms`（合约流）。
+1. `BinanceWebSocketClient` 订阅 `@depth`（合约增量深度流）。
 2. `useWebSocket` 将 depth 事件转发给 `dataProcessor.worker`。
 3. Worker 在 `waiting_snapshot` 状态先缓冲事件。
 4. 主线程并行拉取 REST snapshot：`/fapi/v1/depth`，调用 `initSnapshot()` 初始化。
@@ -72,7 +72,7 @@ src/
 #### Trade Pipeline (Futures) / 交易流水处理链路（合约）
 
 1. `BinanceWebSocketClient` 订阅 `@trade`。
-2. 事件转发到 Worker，Worker 做批处理（100ms）与 latest-wins（仅 trade）。
+2. 事件转发到 Worker，Worker 做批处理（50ms）与 latest-wins（仅 trade）。
 3. 主线程收到批次后 `startTransition(() => addTrades(batch))` 写入 `tradeStore`。
 4. `TradeTape` 使用虚拟列表渲染。
 
@@ -134,16 +134,16 @@ WebSocket → Worker (Processing) → Main Thread (Rendering)
 
 #### 限流策略 / Throttling Strategy
 
-**订单簿限流 (100ms)**:
+**订单簿限流 (20ms)**:
 
 - 累积所有增量更新到 Map
-- 每 100ms 计算一次排序后的快照
+- 每 20ms 计算一次排序后的快照
 - 中间更新不返回，减少主线程通信
 
-**交易数据批处理 (100ms)**:
+**交易数据批处理 (50ms)**:
 
 - 缓冲区累积交易数据
-- 每 100ms 返回一次批次
+- 每 50ms 返回一次批次
 - 减少状态更新频率
 
 #### Latest-Wins 策略 / Latest-Wins Strategy
@@ -181,7 +181,7 @@ startTransition(() => addTrades(batch));
 
 - React 将 transition 内的状态更新视为低优先级
 - 当用户在 OrderEntry 输入价格/数量时（高优先级），React 可中断并推迟 TradeTape 的重渲染
-- TradeTape 数据每 100ms 批量更新一次，短暂推迟不影响用户感知
+- TradeTape 数据每 50ms 批量更新一次，短暂推迟不影响用户感知
 - OrderBook 不使用 `startTransition`，保持同步更新以确保价格数据的实时性
 
 **效果**：
@@ -228,7 +228,7 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
 | `u`  | 本次事件末个更新ID / Final update ID in event |
 | `pu` | 上一事件末个更新ID / Previous final update ID |
 
-**为什么在合约 `@depth@100ms` 中使用 `pu` 而非 `U` 连续性检测 / Why use `pu` not `U` for continuity in futures depth stream**：
+**为什么在合约 `@depth` 中使用 `pu` 而非 `U` 连续性检测 / Why use `pu` not `U` for continuity in futures depth stream**：
 
 `pu` 直接等于上一事件的 `u`，单字段即可完成连续性判断；而 `U` 需要计算 `prevU + 1`，在 100ms 聚合流中更容易产生误判。
 
@@ -259,7 +259,7 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
 目标场景：订单簿 200-500 updates/s，成交 50-200 trades/s。
 
 1. **多级限流（Adaptive Throttling）**
-   - 根据渲染耗时动态调大 OrderBook/TradeTape 输出间隔（例如 100ms -> 150/200ms）。
+   - 根据渲染耗时动态调大 OrderBook/TradeTape 输出间隔（例如 20/50ms -> 100/150ms）。
 
 2. **数据分层与优先级 / Tiered data and priority**
    - 核心价位（top levels）保持高频；深度档位降频或按需加载。
@@ -295,7 +295,7 @@ OrderBook 数据更新      → 同步更新，保持实时（不使用 transiti
 
 ### 3) 批处理与限流响应性 vs 数据新鲜度 / Batching/Throttling Responsiveness vs Freshness
 
-- **Decision / 决策**: OrderBook/Trade 使用 100ms 批处理与节流窗口。
+- **Decision / 决策**: OrderBook/Trade 使用 20ms/50ms 批处理与节流窗口。
 - **Benefit / 收益**: 显著减少状态写入与重渲染频率，降低卡顿风险。
 - **Cost / 代价**: 数据展示会有轻微时间粒度损失（非逐条实时渲染）。
 - **Mitigation / 缓解**: 核心价位保持稳定输出，参数可按负载动态调优。
