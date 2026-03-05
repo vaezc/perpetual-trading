@@ -3,7 +3,7 @@
  * WebSocket Hook - 连接 WebSocket 服务和 Zustand 状态管理
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, startTransition } from "react";
 import {
   BinanceWebSocketClient,
   createBinanceStreams,
@@ -57,7 +57,8 @@ export function useWebSocket(symbol: string) {
       msgCount.current++;
       const batch = await processor.addTrade(data as BinanceTradeData);
       if (batch && batch.length > 0) {
-        addTrades(batch);
+        // 标记为非紧急更新，React 可在有更高优先级任务时推迟渲染
+        startTransition(() => addTrades(batch));
       }
     };
 

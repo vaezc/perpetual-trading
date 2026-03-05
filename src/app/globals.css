@@ -44,6 +44,16 @@ body {
   background: #6b7280;
 }
 
+/* 隐藏 number input 步进器 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* react-window 滚动条样式 */
 .custom-scrollbar ::-webkit-scrollbar {
   width: 6px;

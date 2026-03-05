@@ -132,6 +132,34 @@ WebSocket → Worker (Processing) → Main Thread (Rendering)
 - 丢弃过时的旧交易
 - 确保用户看到最新数据
 
+#### startTransition 优先级调度 / startTransition Priority Scheduling
+
+TradeTape 的数据更新使用 `startTransition` 标记为**非紧急（non-urgent）**渲染：
+
+```typescript
+// useWebSocket.ts
+startTransition(() => addTrades(batch));
+```
+
+**原理**：
+
+- React 将 transition 内的状态更新视为低优先级
+- 当用户在 OrderEntry 输入价格/数量时（高优先级），React 可中断并推迟 TradeTape 的重渲染
+- TradeTape 数据每 100ms 批量更新一次，短暂推迟不影响用户感知
+- OrderBook 不使用 `startTransition`，保持同步更新以确保价格数据的实时性
+
+**效果**：
+
+```
+用户交互（输入、点击）  → 立即响应（高优先级）
+TradeTape 数据更新      → 可被中断，延迟渲染（低优先级）
+OrderBook 数据更新      → 同步更新，保持实时（不使用 transition）
+```
+
+**为什么 OrderBook 不用 startTransition**：
+
+订单簿是交易决策的核心数据，价格档位需要实时反映，延迟渲染会造成信息滞后，影响交易判断。TradeTape 是历史流水，短暂的渲染延迟对用户无感知影响。
+
 #### 其他优化 / Other Optimizations
 
 - ✅ **react-window** 虚拟化列表渲染
