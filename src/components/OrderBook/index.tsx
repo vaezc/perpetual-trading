@@ -5,17 +5,50 @@
 
 "use client";
 
-import { memo, useMemo, useCallback, useRef, useState, useEffect } from "react";
-import { List as FixedSizeList } from "react-window";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { List } from "react-window";
 import { useOrderBookStore } from "@/stores/orderBookStore";
-import { PriceLevel } from "@/types/orderBook";
-import { formatPrice, formatQuantity } from "@/lib/utils";
-import { Divide } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
+import { BothIcon, BidsIcon, AsksIcon } from "./icons";
+import { BidRow, AskRow } from "./OrderRow";
+import { RatioBar } from "./RatioBar";
+
+type ViewMode = "both" | "bids" | "asks";
+
+const ROW_HEIGHT = 20;
 
 interface OrderBookProps {
-  height?: number;
   pricePrecision?: number;
   quantityPrecision?: number;
+}
+
+function useContainerHeight(
+  ref: React.RefObject<HTMLDivElement | null>,
+  dep: unknown,
+) {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setHeight(el.clientHeight);
+    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, dep]);
+  return height;
+}
+
+function withTotal(
+  levels: { price: string; quantity: string }[],
+  maxRows: number,
+) {
+  return levels.slice(0, maxRows).map((level, index) => ({
+    ...level,
+    total: levels
+      .slice(0, index + 1)
+      .reduce((sum, item) => sum + parseFloat(item.quantity), 0)
+      .toString(),
+  }));
 }
 
 export default function OrderBook({
@@ -24,187 +57,110 @@ export default function OrderBook({
 }: OrderBookProps) {
   const bids = useOrderBookStore((state) => state.orderBook.bids);
   const asks = useOrderBookStore((state) => state.orderBook.asks);
+  const [viewMode, setViewMode] = useState<ViewMode>("both");
   const askContainerRef = useRef<HTMLDivElement>(null);
   const bidContainerRef = useRef<HTMLDivElement>(null);
-  const [askHeight, setAskHeight] = useState(250);
-  const [bidHeight, setBidHeight] = useState(250);
 
-  useEffect(() => {
-    const updateHeights = () => {
-      if (askContainerRef.current) {
-        setAskHeight(askContainerRef.current.clientHeight);
-      }
-      if (bidContainerRef.current) {
-        setBidHeight(bidContainerRef.current.clientHeight);
-      }
-    };
+  const askHeight = useContainerHeight(askContainerRef, viewMode);
+  const bidHeight = useContainerHeight(bidContainerRef, viewMode);
 
-    updateHeights();
-    const observer = new ResizeObserver(updateHeights);
-    if (askContainerRef.current) observer.observe(askContainerRef.current);
-    if (bidContainerRef.current) observer.observe(bidContainerRef.current);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // 根据容器高度计算显示行数
-  const ROW_HEIGHT = 20;
-  const maxAskRows = Math.floor(askHeight / ROW_HEIGHT);
-  const maxBidRows = Math.floor(bidHeight / ROW_HEIGHT);
-
-  // 使用 useMemo 缓存计算结果，并限制显示数量
   const asksWithTotal = useMemo(
-    () =>
-      asks
-        .slice(0, maxAskRows)
-        .map((ask, index) => {
-          const total = asks
-            .slice(0, index + 1)
-            .reduce((sum, item) => sum + parseFloat(item.quantity), 0)
-            .toString();
-          return { ...ask, total };
-        })
-        .reverse(),
-    [asks, maxAskRows],
+    () => withTotal(asks, Math.floor(askHeight / ROW_HEIGHT)).reverse(),
+    [asks, askHeight],
   );
 
   const bidsWithTotal = useMemo(
-    () =>
-      bids.slice(0, maxBidRows).map((bid, index) => {
-        const total = bids
-          .slice(0, index + 1)
-          .reduce((sum, item) => sum + parseFloat(item.quantity), 0)
-          .toString();
-        return { ...bid, total };
-      }),
-    [bids, maxBidRows],
+    () => withTotal(bids, Math.floor(bidHeight / ROW_HEIGHT)),
+    [bids, bidHeight],
   );
 
-  const AskRowComponent = useCallback(
-    ({ index, style }: any) => (
-      <AskRow
-        level={asksWithTotal[index]}
-        style={style}
-        pricePrecision={pricePrecision}
-        quantityPrecision={quantityPrecision}
-      />
-    ),
-    [asksWithTotal, pricePrecision, quantityPrecision],
-  );
+  const { bidRatio, askRatio } = useMemo(() => {
+    const totalBid = bids.reduce((sum, b) => sum + parseFloat(b.quantity), 0);
+    const totalAsk = asks.reduce((sum, a) => sum + parseFloat(a.quantity), 0);
+    const total = totalBid + totalAsk;
+    if (total === 0) return { bidRatio: 50, askRatio: 50 };
+    return {
+      bidRatio: Math.round((totalBid / total) * 100),
+      askRatio: Math.round((totalAsk / total) * 100),
+    };
+  }, [bids, asks]);
 
-  const BidRowComponent = useCallback(
-    ({ index, style }: any) => (
-      <BidRow
-        level={bidsWithTotal[index]}
-        style={style}
-        pricePrecision={pricePrecision}
-        quantityPrecision={quantityPrecision}
-      />
-    ),
-    [bidsWithTotal, pricePrecision, quantityPrecision],
-  );
+  const currentPrice = bids[0]?.price ?? "0";
 
-  // 当前价格（使用第一个买单价格）
-  const currentPrice = bids[0]?.price || "0";
+  const VIEW_MODES: { mode: ViewMode; Icon: typeof BothIcon; title: string }[] =
+    [
+      { mode: "both", Icon: BothIcon, title: "买卖盘" },
+      { mode: "bids", Icon: BidsIcon, title: "买盘" },
+      { mode: "asks", Icon: AsksIcon, title: "卖盘" },
+    ];
 
   return (
-    <div className="flex flex-col h-full border rounded-lg bg-gray-900 border-gray-700">
-      {/* Header / 表头 */}
-      <div className="flex justify-between px-4 py-2 text-xs text-gray-400 border-b border-gray-700">
+    <div className="flex flex-col h-full bg-gray-900 rounded-lg border border-gray-700">
+      {/* 顶部控制栏 / Top control bar */}
+      <div className="flex items-center px-3 py-2 border-b border-gray-700 gap-2">
+        {VIEW_MODES.map(({ mode, Icon, title }) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            className={`p-1 rounded hover:bg-gray-700 ${viewMode === mode ? "bg-gray-700" : ""}`}
+            title={title}
+          >
+            <Icon active={viewMode === mode} />
+          </button>
+        ))}
+      </div>
+
+      {/* 表头 / Header */}
+      <div className="flex justify-between px-3 py-1 text-xs text-gray-500">
         <span>价格(USDT)</span>
         <span>数量(BTC)</span>
-        <span>累计(BTC)</span>
+        <span>成交额</span>
       </div>
 
-      {/* Asks / 卖单 */}
-      <div ref={askContainerRef} className="flex-1 overflow-hidden">
-        <FixedSizeList
-          style={{ height: askHeight }}
-          rowCount={asksWithTotal.length}
-          rowHeight={20}
-          rowComponent={AskRowComponent}
-          rowProps={{}}
-        />
-      </div>
+      {/* 卖单区域 / Asks area */}
+      {(viewMode === "both" || viewMode === "asks") && (
+        <div ref={askContainerRef} className="flex-1 overflow-hidden">
+          <List
+            style={{ height: askHeight }}
+            rowCount={asksWithTotal.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={AskRow}
+            rowProps={{
+              levels: asksWithTotal,
+              pricePrecision,
+              quantityPrecision,
+            }}
+          />
+        </div>
+      )}
 
-      <Divide className="w-full h-1 bg-gray-700" />
+      {/* 当前价格 / Current price */}
+      {viewMode === "both" && (
+        <div className="flex items-center gap-2 px-3 py-1 border-y border-gray-700 bg-gray-800/50">
+          <span className="text-green-400 font-semibold text-sm">
+            {formatPrice(currentPrice, pricePrecision)}
+          </span>
+        </div>
+      )}
 
-      {/* Bids / 买单 */}
-      <div ref={bidContainerRef} className="flex-1 overflow-hidden">
-        <FixedSizeList
-          style={{ height: bidHeight }}
-          rowCount={bidsWithTotal.length}
-          rowHeight={20}
-          rowComponent={BidRowComponent}
-          rowProps={{}}
-        />
-      </div>
+      {/* 买单区域 / Bids area */}
+      {(viewMode === "both" || viewMode === "bids") && (
+        <div ref={bidContainerRef} className="flex-1 overflow-hidden">
+          <List
+            style={{ height: bidHeight }}
+            rowCount={bidsWithTotal.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={BidRow}
+            rowProps={{
+              levels: bidsWithTotal,
+              pricePrecision,
+              quantityPrecision,
+            }}
+          />
+        </div>
+      )}
+
+      <RatioBar bidRatio={bidRatio} askRatio={askRatio} />
     </div>
   );
 }
-
-/**
- * Bid Row Component - Memoized for performance
- * 买单行组件 - 使用 memo 优化性能
- */
-const BidRow = memo(function BidRow({
-  level,
-  style,
-  pricePrecision,
-  quantityPrecision,
-}: {
-  level: PriceLevel;
-  style: React.CSSProperties;
-  pricePrecision: number;
-  quantityPrecision: number;
-}) {
-  return (
-    <div
-      style={style}
-      className="flex justify-between px-4 text-sm hover:bg-gray-800"
-    >
-      <span className="text-green-500">
-        {formatPrice(level.price, pricePrecision)}
-      </span>
-      <span className="text-gray-300">
-        {formatQuantity(level.quantity, quantityPrecision)}
-      </span>
-      <span className="text-gray-400">
-        {level.total ? formatQuantity(level.total, quantityPrecision) : "-"}
-      </span>
-    </div>
-  );
-});
-
-/**
- * Ask Row Component - Memoized for performance
- * 卖单行组件 - 使用 memo 优化性能
- */
-const AskRow = memo(function AskRow({
-  level,
-  style,
-  pricePrecision,
-  quantityPrecision,
-}: {
-  level: PriceLevel;
-  style: React.CSSProperties;
-  pricePrecision: number;
-  quantityPrecision: number;
-}) {
-  return (
-    <div
-      style={style}
-      className="flex justify-between px-4 text-sm hover:bg-gray-800"
-    >
-      <span className="text-red-500">
-        {formatPrice(level.price, pricePrecision)}
-      </span>
-      <span className="text-gray-300">
-        {formatQuantity(level.quantity, quantityPrecision)}
-      </span>
-      <span className="text-gray-400">
-        {level.total ? formatQuantity(level.total, quantityPrecision) : "-"}
-      </span>
-    </div>
-  );
-});

@@ -7,12 +7,14 @@ import { ReactNode } from "react";
 
 interface GridPanelProps {
   children: ReactNode;
+  isLoading?: boolean;
+  skeleton?: ReactNode;
 }
 
-export default function GridPanel({ children }: GridPanelProps) {
+export default function GridPanel({ children, isLoading, skeleton }: GridPanelProps) {
   return (
     <div className="bg-gray-900 rounded-lg overflow-hidden h-full w-full flex flex-col">
-      {children}
+      {isLoading && skeleton ? skeleton : children}
     </div>
   );
 }

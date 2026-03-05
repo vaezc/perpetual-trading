@@ -7,7 +7,9 @@
 
 import { useWebSocket } from "@/hooks/useWebSocket";
 import OrderBook from "@/components/OrderBook";
+import { OrderBookSkeleton } from "@/components/OrderBook/Skeleton";
 import TradeTape from "@/components/TradeTape";
+import { TradeTapeSkeleton } from "@/components/TradeTape/Skeleton";
 import OrderEntry from "@/components/OrderEntry";
 import MarketSelector from "@/components/MarketSelector";
 import ConnectionStatus from "@/components/ConnectionStatus";
@@ -20,7 +22,9 @@ import "react-resizable/css/styles.css";
 
 export default function Home() {
   const currentMarket = useMarketStore((state) => state.currentMarket);
+  const connectionStatus = useMarketStore((state) => state.connectionStatus);
   const { width, containerRef } = useContainerWidth();
+  const isLoading = connectionStatus === "connecting" || connectionStatus === "reconnecting";
 
   // 连接 WebSocket
   useWebSocket(currentMarket.symbol);
@@ -52,11 +56,13 @@ export default function Home() {
   return (
     <div className="h-screen bg-black text-white flex flex-col">
       {/* Header / 顶部栏 */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
-        <h1 className="text-xl font-bold">Perpetual Trading</h1>
-        <div className="flex items-center gap-4">
+      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-800 shrink-0">
+        <h1 className="text-sm font-semibold text-white tracking-wide">Perpetual Trading</h1>
+        <div className="flex items-center gap-3">
           <MarketSelector />
+          <div className="w-px h-4 bg-gray-700" />
           <ConnectionStatus />
+          <div className="w-px h-4 bg-gray-700" />
           <MessageRate />
         </div>
       </header>
@@ -74,7 +80,7 @@ export default function Home() {
           containerPadding={[8, 8]}
         >
           <div key="orderbook">
-            <GridPanel>
+            <GridPanel isLoading={isLoading} skeleton={<OrderBookSkeleton />}>
               <OrderBook
                 pricePrecision={currentMarket.pricePrecision}
                 quantityPrecision={currentMarket.quantityPrecision}
@@ -82,7 +88,7 @@ export default function Home() {
             </GridPanel>
           </div>
           <div key="trades">
-            <GridPanel>
+            <GridPanel isLoading={isLoading} skeleton={<TradeTapeSkeleton />}>
               <TradeTape
                 pricePrecision={currentMarket.pricePrecision}
                 quantityPrecision={currentMarket.quantityPrecision}

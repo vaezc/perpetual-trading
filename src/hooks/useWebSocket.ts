@@ -14,6 +14,8 @@ import { useMarketStore } from "@/stores/marketStore";
 import { useDataProcessor } from "./useDataProcessor";
 import type { BinanceOrderBookData, BinanceTradeData } from "@/types/worker";
 
+const RATE_INTERVAL_MS = 1000;
+
 export function useWebSocket(symbol: string) {
   const wsClient = useRef<BinanceWebSocketClient | null>(null);
   const setOrderBook = useOrderBookStore((state) => state.setOrderBook);
@@ -21,19 +23,27 @@ export function useWebSocket(symbol: string) {
   const setConnectionStatus = useMarketStore(
     (state) => state.setConnectionStatus,
   );
+  const updateStats = useMarketStore((state) => state.updateStats);
+  const resetOrderBook = useOrderBookStore((state) => state.reset);
+  const resetTrades = useTradeStore((state) => state.reset);
   const processor = useDataProcessor();
+  const msgCount = useRef(0);
 
   useEffect(() => {
     if (!processor) return;
 
-    // 重置 Worker 状态 / Reset worker state
-    processor.reset();
+    // 切换市场时清空旧数据 / Clear stale data on market switch
+    resetOrderBook();
+    resetTrades();
+    // Fire-and-forget reset，worker 内部同步执行无需等待结果
+    void processor.reset();
 
     // 创建 WebSocket 客户端 / Create WebSocket client
     wsClient.current = new BinanceWebSocketClient();
 
     // 处理订单簿数据 / Handle order book data
     const handleOrderBook = async (data: unknown) => {
+      msgCount.current++;
       const processed = await processor.processOrderBook(
         data as BinanceOrderBookData,
       );
@@ -44,11 +54,18 @@ export function useWebSocket(symbol: string) {
 
     // 处理交易数据 / Handle trade data
     const handleTrade = async (data: unknown) => {
+      msgCount.current++;
       const batch = await processor.addTrade(data as BinanceTradeData);
       if (batch && batch.length > 0) {
         addTrades(batch);
       }
     };
+
+    // 每秒统计消息速率 / Calculate message rate every second
+    const rateTimer = setInterval(() => {
+      updateStats({ messageRate: msgCount.current });
+      msgCount.current = 0;
+    }, RATE_INTERVAL_MS);
 
     // 注册消息处理器 / Register message handlers
     wsClient.current.on("orderbook", handleOrderBook);
@@ -65,7 +82,8 @@ export function useWebSocket(symbol: string) {
 
     // 清理函数 / Cleanup function
     return () => {
+      clearInterval(rateTimer);
       wsClient.current?.disconnect();
     };
-  }, [symbol, setOrderBook, addTrades, setConnectionStatus, processor]);
+  }, [symbol, setOrderBook, addTrades, setConnectionStatus, updateStats, resetOrderBook, resetTrades, processor]);
 }

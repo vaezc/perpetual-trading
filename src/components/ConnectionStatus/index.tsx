@@ -7,24 +7,23 @@
 
 import { useMarketStore } from '@/stores/marketStore';
 
+const STATUS_CONFIG = {
+  connected:     { dot: 'bg-green-500',              text: '已连接' },
+  connecting:    { dot: 'bg-yellow-400 animate-pulse', text: '连接中' },
+  reconnecting:  { dot: 'bg-yellow-400 animate-pulse', text: '重连中' },
+  disconnected:  { dot: 'bg-gray-500',               text: '已断开' },
+  disconnecting: { dot: 'bg-gray-500',               text: '断开中' },
+  error:         { dot: 'bg-red-500',                text: '错误' },
+} as const;
+
 export default function ConnectionStatus() {
   const status = useMarketStore((state) => state.connectionStatus);
-
-  const statusConfig = {
-    connected: { color: 'bg-green-500', text: 'Connected / 已连接' },
-    connecting: { color: 'bg-yellow-500', text: 'Connecting / 连接中' },
-    reconnecting: { color: 'bg-yellow-500', text: 'Reconnecting / 重连中' },
-    disconnected: { color: 'bg-gray-500', text: 'Disconnected / 已断开' },
-    disconnecting: { color: 'bg-gray-500', text: 'Disconnecting / 断开中' },
-    error: { color: 'bg-red-500', text: 'Error / 错误' },
-  };
-
-  const config = statusConfig[status];
+  const { dot, text } = STATUS_CONFIG[status];
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 rounded-lg">
-      <div className={`w-2 h-2 rounded-full ${config.color}`} />
-      <span className="text-sm text-gray-300">{config.text}</span>
+    <div className="flex items-center gap-1.5">
+      <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      <span className="text-xs text-gray-400">{text}</span>
     </div>
   );
 }
