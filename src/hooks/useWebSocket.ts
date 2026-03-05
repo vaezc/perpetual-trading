@@ -19,8 +19,8 @@ import type {
 } from "@/types/worker";
 
 const RATE_INTERVAL_MS = 1000; // 消息速率统计间隔 / Message rate calculation interval
-const SNAPSHOT_LIMIT = 100; // REST 快照深度档位数，与 MAX_LEVELS 对齐 / REST snapshot depth, aligned with MAX_LEVELS
-const BINANCE_REST = "https://api.binance.com/api/v3";
+const SNAPSHOT_LIMIT = 1000; // REST 快照深度档位数 / REST snapshot depth
+const BINANCE_REST = "https://fapi.binance.com/fapi/v1";
 
 export function useWebSocket(symbol: string) {
   const wsClient = useRef<BinanceWebSocketClient | null>(null);

@@ -6,8 +6,7 @@
 export interface BinanceOrderBookData {
   U: number;             // First update ID in event / 本次事件首个更新ID
   u: number;             // Final update ID in event / 本次事件末个更新ID
-  // Note: pu (previous final update ID) is futures-only, not present in spot @depth streams
-  // pu 字段仅存在于合约市场，现货 @depth 流不提供
+  pu: number;            // Previous final update ID / 上一事件末个更新ID（合约流）
   b: [string, string][]; // Bids / 买单
   a: [string, string][]; // Asks / 卖单
 }

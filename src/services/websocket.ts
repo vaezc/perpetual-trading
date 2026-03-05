@@ -29,7 +29,8 @@ export class BinanceWebSocketClient {
 
   constructor(config: Partial<WebSocketConfig> = {}) {
     this.config = {
-      url: config.url || "wss://stream.binance.com:443",
+      // Binance USD-M futures combined stream endpoint
+      url: config.url || "wss://fstream.binance.com",
       reconnectInterval: config.reconnectInterval || 3000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
       heartbeatInterval: config.heartbeatInterval || 30000,

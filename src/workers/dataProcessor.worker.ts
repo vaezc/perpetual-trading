@@ -128,9 +128,9 @@ const dataProcessor = {
     if (firstIdx >= 0) {
       for (let i = firstIdx; i < pending.length; i++) {
         const event = pending[i];
-        // 非首个事件需校验连续性：U 必须等于上一事件的 u + 1
-        // Verify continuity for events after the first: U must equal previous event's u + 1
-        if (i > firstIdx && event.U !== lastProcessedUpdateId + 1) {
+        // 合约深度流连续性：pu 必须等于上一事件的 u
+        // Futures depth stream continuity: pu must equal previous event's u
+        if (i > firstIdx && event.pu !== lastProcessedUpdateId) {
           // 缓冲区内存在缺口，停止重放但仍进入 synced 状态
           // Gap in buffered events — stop replay but still enter synced state
           break;
@@ -141,7 +141,9 @@ const dataProcessor = {
     }
 
     syncState = "synced"; // 同步完成，进入正常处理模式 / Sync complete, enter normal processing mode
-    console.log(`[Worker] Synced. lastProcessedUpdateId=${lastProcessedUpdateId}, bids=${currentBids.size}, asks=${currentAsks.size}`);
+    console.log(
+      `[Worker] Synced. lastProcessedUpdateId=${lastProcessedUpdateId}, bids=${currentBids.size}, asks=${currentAsks.size}`,
+    );
   },
 
   /**
@@ -159,12 +161,14 @@ const dataProcessor = {
       return null;
     }
 
-    // 序列连续性校验（现货市场）：当前事件的 U 必须等于上一事件的 u + 1
-    // Sequence continuity check (spot market): current event's U must equal previous event's u + 1
-    if (data.U !== lastProcessedUpdateId + 1) {
+    // 合约深度流连续性校验：当前事件 pu 必须等于上一事件的 u
+    // Futures continuity check: current event.pu must equal previous event.u
+    if (data.pu !== lastProcessedUpdateId) {
       // 检测到序列缺口，重置状态并通知调用方重新同步
       // Gap detected — reset state and signal caller to re-fetch snapshot
-      console.warn(`[Worker] Gap detected: data.U=${data.U}, expected=${lastProcessedUpdateId + 1}`);
+      console.warn(
+        `[Worker] Gap detected: data.pu=${data.pu}, expected=${lastProcessedUpdateId}`,
+      );
       syncState = "waiting_snapshot";
       eventBuffer = [];
       currentBids.clear();
