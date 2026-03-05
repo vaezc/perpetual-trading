@@ -11,6 +11,12 @@ import { useOrderBookStore } from "@/stores/orderBookStore";
 import { useMarketStore } from "@/stores/marketStore";
 import { formatPrice } from "@/lib/utils";
 import { aggregateByBucket, getBucketDecimals } from "@/lib/orderBook";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { BothIcon, BidsIcon, AsksIcon } from "./icons";
 import { BidRow, AskRow } from "./OrderRow";
 import { RatioBar } from "./RatioBar";
@@ -117,16 +123,22 @@ export default function OrderBook({
     <div className="flex flex-col h-full bg-gray-900 rounded-lg border border-gray-700">
       {/* 顶部控制栏 / Top control bar */}
       <div className="flex items-center px-3 py-2 border-b border-gray-700 gap-2">
-        {VIEW_MODES.map(({ mode, Icon, title }) => (
-          <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`p-1 rounded hover:bg-gray-700 ${viewMode === mode ? "bg-gray-700" : ""}`}
-            title={title}
-          >
-            <Icon active={viewMode === mode} />
-          </button>
-        ))}
+        <TooltipProvider>
+          {VIEW_MODES.map(({ mode, Icon, title }) => (
+            <Tooltip key={mode}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setViewMode(mode)}
+                  className={`p-1 rounded hover:bg-gray-700 ${viewMode === mode ? "bg-gray-700" : ""}`}
+                  aria-label={title}
+                >
+                  <Icon active={viewMode === mode} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{title}</TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
         <div className="ml-auto">
           <PrecisionSelect value={priceBucket} onChange={setPriceBucket} />
         </div>

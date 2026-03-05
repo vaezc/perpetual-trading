@@ -27,7 +27,9 @@ export default function Home() {
   const streamError = useMarketStore((state) => state.streamError);
   const requestRetry = useMarketStore((state) => state.requestRetry);
   const setStreamError = useMarketStore((state) => state.setStreamError);
-  const { width, containerRef } = useContainerWidth();
+  const { width, containerRef, mounted } = useContainerWidth({
+    measureBeforeMount: true,
+  });
   const isLoading = connectionStatus === "connecting" || connectionStatus === "reconnecting";
 
   // 连接 WebSocket
@@ -100,38 +102,58 @@ export default function Home() {
 
       {/* Grid Layout / 网格布局 */}
       <div ref={containerRef} className="flex-1 overflow-hidden">
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={layouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={30}
-          width={width}
-          margin={[8, 8]}
-          containerPadding={[8, 8]}
-        >
-          <div key="orderbook">
-            <GridPanel isLoading={isLoading} skeleton={<OrderBookSkeleton />}>
-              <OrderBook
-                pricePrecision={currentMarket.pricePrecision}
-                quantityPrecision={currentMarket.quantityPrecision}
-              />
-            </GridPanel>
+        {mounted ? (
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={layouts}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            rowHeight={30}
+            width={width}
+            margin={[8, 8]}
+            containerPadding={[8, 8]}
+          >
+            <div key="orderbook">
+              <GridPanel isLoading={isLoading} skeleton={<OrderBookSkeleton />}>
+                <OrderBook
+                  pricePrecision={currentMarket.pricePrecision}
+                  quantityPrecision={currentMarket.quantityPrecision}
+                />
+              </GridPanel>
+            </div>
+            <div key="trades">
+              <GridPanel isLoading={isLoading} skeleton={<TradeTapeSkeleton />}>
+                <TradeTape
+                  pricePrecision={currentMarket.pricePrecision}
+                  quantityPrecision={currentMarket.quantityPrecision}
+                />
+              </GridPanel>
+            </div>
+            <div key="order-entry">
+              <GridPanel>
+                <OrderEntry />
+              </GridPanel>
+            </div>
+          </ResponsiveGridLayout>
+        ) : (
+          <div className="h-full p-2 grid grid-cols-12 gap-2">
+            <div className="col-span-3 h-full">
+              <GridPanel isLoading skeleton={<OrderBookSkeleton />}>
+                <div />
+              </GridPanel>
+            </div>
+            <div className="col-span-3 h-full">
+              <GridPanel isLoading skeleton={<TradeTapeSkeleton />}>
+                <div />
+              </GridPanel>
+            </div>
+            <div className="col-span-6 h-full">
+              <GridPanel isLoading>
+                <div />
+              </GridPanel>
+            </div>
           </div>
-          <div key="trades">
-            <GridPanel isLoading={isLoading} skeleton={<TradeTapeSkeleton />}>
-              <TradeTape
-                pricePrecision={currentMarket.pricePrecision}
-                quantityPrecision={currentMarket.quantityPrecision}
-              />
-            </GridPanel>
-          </div>
-          <div key="order-entry">
-            <GridPanel>
-              <OrderEntry />
-            </GridPanel>
-          </div>
-        </ResponsiveGridLayout>
+        )}
       </div>
     </div>
   );
