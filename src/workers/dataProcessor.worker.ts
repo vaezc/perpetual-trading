@@ -142,9 +142,6 @@ const dataProcessor = {
     }
 
     syncState = "synced"; // 同步完成，进入正常处理模式 / Sync complete, enter normal processing mode
-    console.log(
-      `[Worker] Synced. lastProcessedUpdateId=${lastProcessedUpdateId}, bids=${currentBids.size}, asks=${currentAsks.size}`,
-    );
   },
 
   /**
