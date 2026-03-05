@@ -80,6 +80,7 @@ src/
 
 - 连接状态由 `services/websocket.ts` 统一维护并同步到 `marketStore`。
 - 消息速率由 `useWebSocket` 每秒统计并更新 `marketStore.stats.messageRate`。
+- 订单簿精度切换在前端本地完成（不发额外请求）：`OrderBook` 按用户选择的 bucket 对价格档位聚合后再渲染。
 
 ### 2. State Management / 状态管理
 
@@ -158,6 +159,14 @@ WebSocket → Worker (Processing) → Main Thread (Rendering)
 - 缓冲区累积过多时，只返回最新 50 条
 - 丢弃过时的旧交易
 - 确保用户看到最新数据
+
+#### 订单簿精度分桶（前端聚合） / OrderBook Price Bucketing (Frontend Aggregation)
+
+- 提供可切换的价格精度档位（`0.01 / 0.1 / 1 / 10 / 50`）。
+- 聚合逻辑在前端执行，不触发新的 WS/REST 请求：
+  - `bids` 使用向下分桶（floor）
+  - `asks` 使用向上分桶（ceil）
+- 目标是降低噪音与视觉抖动，帮助用户在“细节精度”和“结构可读性”之间切换。
 
 #### startTransition 优先级调度 / startTransition Priority Scheduling
 

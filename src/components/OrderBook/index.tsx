@@ -9,9 +9,11 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { List } from "react-window";
 import { useOrderBookStore } from "@/stores/orderBookStore";
 import { formatPrice } from "@/lib/utils";
+import { aggregateByBucket, getBucketDecimals } from "@/lib/orderBook";
 import { BothIcon, BidsIcon, AsksIcon } from "./icons";
 import { BidRow, AskRow } from "./OrderRow";
 import { RatioBar } from "./RatioBar";
+import { PrecisionSelect } from "./PrecisionSelect";
 
 type ViewMode = "both" | "bids" | "asks";
 
@@ -58,20 +60,31 @@ export default function OrderBook({
   const bids = useOrderBookStore((state) => state.orderBook.bids);
   const asks = useOrderBookStore((state) => state.orderBook.asks);
   const [viewMode, setViewMode] = useState<ViewMode>("both");
+  const [priceBucket, setPriceBucket] = useState<number>(0.01);
   const askContainerRef = useRef<HTMLDivElement>(null);
   const bidContainerRef = useRef<HTMLDivElement>(null);
 
   const askHeight = useContainerHeight(askContainerRef, viewMode);
   const bidHeight = useContainerHeight(bidContainerRef, viewMode);
 
+  const aggregatedAsks = useMemo(
+    () => aggregateByBucket(asks, "asks", priceBucket),
+    [asks, priceBucket],
+  );
+  const aggregatedBids = useMemo(
+    () => aggregateByBucket(bids, "bids", priceBucket),
+    [bids, priceBucket],
+  );
+
   const asksWithTotal = useMemo(
-    () => withTotal(asks, Math.floor(askHeight / ROW_HEIGHT)).reverse(),
-    [asks, askHeight],
+    () =>
+      withTotal(aggregatedAsks, Math.floor(askHeight / ROW_HEIGHT)).reverse(),
+    [aggregatedAsks, askHeight],
   );
 
   const bidsWithTotal = useMemo(
-    () => withTotal(bids, Math.floor(bidHeight / ROW_HEIGHT)),
-    [bids, bidHeight],
+    () => withTotal(aggregatedBids, Math.floor(bidHeight / ROW_HEIGHT)),
+    [aggregatedBids, bidHeight],
   );
 
   const { bidRatio, askRatio } = useMemo(() => {
@@ -86,6 +99,10 @@ export default function OrderBook({
   }, [bids, asks]);
 
   const currentPrice = bids[0]?.price ?? "0";
+  const displayPricePrecision = Math.min(
+    pricePrecision,
+    getBucketDecimals(priceBucket),
+  );
 
   const VIEW_MODES: { mode: ViewMode; Icon: typeof BothIcon; title: string }[] =
     [
@@ -108,6 +125,9 @@ export default function OrderBook({
             <Icon active={viewMode === mode} />
           </button>
         ))}
+        <div className="ml-auto">
+          <PrecisionSelect value={priceBucket} onChange={setPriceBucket} />
+        </div>
       </div>
 
       {/* 表头 / Header */}
@@ -127,7 +147,7 @@ export default function OrderBook({
             rowComponent={AskRow}
             rowProps={{
               levels: asksWithTotal,
-              pricePrecision,
+              pricePrecision: displayPricePrecision,
               quantityPrecision,
             }}
           />
@@ -138,7 +158,7 @@ export default function OrderBook({
       {viewMode === "both" && (
         <div className="flex items-center gap-2 px-3 py-1 border-y border-gray-700 bg-gray-800/50">
           <span className="text-green-400 font-semibold text-sm">
-            {formatPrice(currentPrice, pricePrecision)}
+            {formatPrice(currentPrice, displayPricePrecision)}
           </span>
         </div>
       )}
@@ -153,7 +173,7 @@ export default function OrderBook({
             rowComponent={BidRow}
             rowProps={{
               levels: bidsWithTotal,
-              pricePrecision,
+              pricePrecision: displayPricePrecision,
               quantityPrecision,
             }}
           />
