@@ -27,6 +27,13 @@ type ViewMode = "both" | "bids" | "asks";
 
 const ROW_HEIGHT = 20;
 
+// 静态常量提到模块级，避免每次渲染重建数组 / Static constant hoisted to module level to avoid per-render recreation
+const VIEW_MODES: { mode: ViewMode; Icon: typeof BothIcon; title: string }[] = [
+  { mode: "both", Icon: BothIcon, title: "买卖盘" },
+  { mode: "bids", Icon: BidsIcon, title: "买盘" },
+  { mode: "asks", Icon: AsksIcon, title: "卖盘" },
+];
+
 interface OrderBookProps {
   pricePrecision?: number;
   quantityPrecision?: number;
@@ -63,7 +70,9 @@ export default function OrderBook({
   pricePrecision = 2,
   quantityPrecision = 6,
 }: OrderBookProps) {
-  const currentMarket = useMarketStore((state) => state.currentMarket);
+  // 订阅基础类型字段，避免对象引用变化触发不必要重渲染 / Subscribe to primitive fields to avoid re-renders on object reference changes
+  const quoteAsset = useMarketStore((s) => s.currentMarket.quoteAsset);
+  const baseAsset = useMarketStore((s) => s.currentMarket.baseAsset);
   const bids = useOrderBookStore((state) => state.orderBook.bids);
   const asks = useOrderBookStore((state) => state.orderBook.asks);
   const [viewMode, setViewMode] = useState<ViewMode>("both");
@@ -118,13 +127,6 @@ export default function OrderBook({
     getBucketDecimals(priceBucket),
   );
 
-  const VIEW_MODES: { mode: ViewMode; Icon: typeof BothIcon; title: string }[] =
-    [
-      { mode: "both", Icon: BothIcon, title: "买卖盘" },
-      { mode: "bids", Icon: BidsIcon, title: "买盘" },
-      { mode: "asks", Icon: AsksIcon, title: "卖盘" },
-    ];
-
   return (
     <div className="flex flex-col h-full bg-gray-900 rounded-lg border border-gray-700">
       {/* 顶部控制栏 / Top control bar */}
@@ -157,9 +159,9 @@ export default function OrderBook({
 
       {/* 表头 / Header */}
       <div className="flex justify-between px-3 py-1 text-xs text-gray-500">
-        <span>价格({currentMarket.quoteAsset})</span>
-        <span>数量({currentMarket.baseAsset})</span>
-        <span>累计({currentMarket.baseAsset})</span>
+        <span>价格({quoteAsset})</span>
+        <span>数量({baseAsset})</span>
+        <span>累计({baseAsset})</span>
       </div>
 
       {/* 卖单区域 / Asks area */}

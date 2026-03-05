@@ -35,7 +35,9 @@ interface OrderFormProps {
 }
 
 function OrderForm({ side }: OrderFormProps) {
-  const currentMarket = useMarketStore((state) => state.currentMarket);
+  // 订阅基础类型字段，避免对象引用变化触发不必要重渲染 / Subscribe to primitive fields to avoid re-renders on object reference changes
+  const baseAsset = useMarketStore((s) => s.baseAsset);
+  const quoteAsset = useMarketStore((s) => s.quoteAsset);
   const priceInputId = useId();
   const quantityInputId = useId();
   const [price, setPrice] = useState("");
@@ -57,7 +59,7 @@ function OrderForm({ side }: OrderFormProps) {
     }
     setErrors({});
     toast.success(isBuy ? "买入委托成功" : "卖出委托成功", {
-      description: `${quantity} ${currentMarket.baseAsset} @ ${price} ${currentMarket.quoteAsset}`,
+      description: `${quantity} ${baseAsset} @ ${price} ${quoteAsset}`,
       duration: 3000,
     });
     setPrice("");
@@ -67,13 +69,13 @@ function OrderForm({ side }: OrderFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-3 h-full" noValidate>
       <h3 className={`text-sm font-semibold ${isBuy ? "text-green-400" : "text-red-400"}`}>
-        {label} {currentMarket.baseAsset}
+        {label} {baseAsset}
       </h3>
 
       {/* Price */}
       <div className="space-y-1">
         <Label htmlFor={priceInputId} className="text-xs text-gray-500">
-          价格({currentMarket.quoteAsset})
+          价格({quoteAsset})
         </Label>
         <div className="relative">
           <Input
@@ -92,7 +94,7 @@ function OrderForm({ side }: OrderFormProps) {
             }`}
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
-            {currentMarket.quoteAsset}
+            {quoteAsset}
           </span>
         </div>
         {errors.price && (
@@ -103,7 +105,7 @@ function OrderForm({ side }: OrderFormProps) {
       {/* Quantity */}
       <div className="space-y-1">
         <Label htmlFor={quantityInputId} className="text-xs text-gray-500">
-          数量({currentMarket.baseAsset})
+          数量({baseAsset})
         </Label>
         <div className="relative">
           <Input
@@ -122,7 +124,7 @@ function OrderForm({ side }: OrderFormProps) {
             }`}
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
-            {currentMarket.baseAsset}
+            {baseAsset}
           </span>
         </div>
         {errors.quantity && (
@@ -151,7 +153,7 @@ function OrderForm({ side }: OrderFormProps) {
       <div className="flex justify-between text-xs text-gray-500">
         <span>可用</span>
         <span className="text-gray-400">
-          -- {isBuy ? currentMarket.quoteAsset : currentMarket.baseAsset}
+          -- {isBuy ? quoteAsset : baseAsset}
         </span>
       </div>
 

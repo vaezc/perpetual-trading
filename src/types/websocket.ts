@@ -18,7 +18,6 @@ export interface WebSocketConfig {
   url: string;                      // WebSocket 服务器地址
   reconnectInterval?: number;       // 重连间隔（毫秒），默认 3000ms
   maxReconnectAttempts?: number;    // 最大重连次数，默认 10次
-  heartbeatInterval?: number;       // 心跳间隔（毫秒），默认 30000ms
 }
 
 /**

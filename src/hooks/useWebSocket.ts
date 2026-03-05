@@ -53,10 +53,6 @@ export function useWebSocket(symbol: string) {
     // 创建 WebSocket 客户端 / Create WebSocket client
     wsClient.current = new BinanceWebSocketClient();
 
-    // 用于取消过期快照请求，防止 effect 清理后旧快照污染新状态
-    // Abort flag to prevent stale snapshot from corrupting state after cleanup
-    let aborted = false;
-
     /**
      * Fetch REST snapshot and pass it to the worker.
      * Called once on connect, and again whenever the worker signals a sequence gap.
@@ -83,7 +79,7 @@ export function useWebSocket(symbol: string) {
         const snapshot = (await res.json()) as OrderBookSnapshot;
         // 检查 effect 是否已清理，避免旧快照覆盖新状态
         // Check if effect was cleaned up to avoid stale snapshot overwriting new state
-        if (!aborted && active) {
+        if (active) {
           await processor.initSnapshot(snapshot);
           setStreamError(null);
         }
@@ -161,8 +157,7 @@ export function useWebSocket(symbol: string) {
 
     // 清理函数 / Cleanup function
     return () => {
-      active = false;
-      aborted = true; // 标记已清理，阻止过期快照写入 / Mark as cleaned up to block stale snapshot writes
+      active = false; // 标记已清理，阻止过期操作写入状态 / Mark as cleaned up to block stale operations from writing state
       clearInterval(rateTimer);
       wsClient.current?.disconnect();
     };

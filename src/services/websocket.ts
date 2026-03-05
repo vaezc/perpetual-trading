@@ -20,7 +20,6 @@ export class BinanceWebSocketClient {
   private config: WebSocketConfig;
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
-  private heartbeatTimer: NodeJS.Timeout | null = null;
   private status: WebSocketStatus = "disconnected";
   private messageHandlers: Map<MessageType, MessageHandler> = new Map();
   private statusChangeHandlers: ((status: WebSocketStatus) => void)[] = [];
@@ -33,7 +32,6 @@ export class BinanceWebSocketClient {
       url: config.url || "wss://fstream.binance.com",
       reconnectInterval: config.reconnectInterval || 3000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
-      heartbeatInterval: config.heartbeatInterval || 30000,
     };
   }
 
@@ -65,7 +63,6 @@ export class BinanceWebSocketClient {
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
       this.updateStatus("connected");
-      this.startHeartbeat();
     };
 
     this.ws.onmessage = (event) => {
@@ -82,7 +79,6 @@ export class BinanceWebSocketClient {
     };
 
     this.ws.onclose = () => {
-      this.stopHeartbeat();
       this.updateStatus("disconnected");
       // 只有非主动断开才触发重连 / Only reconnect if not intentionally closed
       if (!this.intentionalClose) {
@@ -128,19 +124,6 @@ export class BinanceWebSocketClient {
     }, this.config.reconnectInterval);
   }
 
-  private startHeartbeat(): void {
-    this.heartbeatTimer = setInterval(() => {
-      // Binance server sends pings automatically, no client ping needed
-    }, this.config.heartbeatInterval);
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
-    }
-  }
-
   private updateStatus(status: WebSocketStatus): void {
     this.status = status;
     this.statusChangeHandlers.forEach((handler) => handler(status));
@@ -165,8 +148,6 @@ export class BinanceWebSocketClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-
-    this.stopHeartbeat();
 
     if (this.ws) {
       this.ws.close();
