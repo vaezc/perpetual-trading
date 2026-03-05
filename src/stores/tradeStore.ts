@@ -8,7 +8,7 @@ import { Trade } from "@/types/trade";
 
 interface TradeState {
   trades: Trade[];
-  addTrades: (dataArray: any[]) => void;
+  addTrades: (trades: Trade[]) => void;
   reset: () => void;
 }
 
@@ -18,23 +18,13 @@ export const useTradeStore = create<TradeState>((set) => ({
   trades: [],
 
   /**
-   * Add multiple trades in batch (for performance)
-   * 批量添加交易（性能优化）
+   * Add multiple trades in batch (already processed by worker)
+   * 批量添加交易（已由 worker 处理）
    */
-  addTrades: (dataArray: any[]) => {
-    set((state) => {
-      const newTrades = dataArray.map((data) => ({
-        id: data.t.toString(),
-        price: data.p,
-        quantity: data.q,
-        timestamp: data.T,
-        isBuyerMaker: data.m,
-      }));
-
-      return {
-        trades: [...newTrades, ...state.trades].slice(0, MAX_TRADES),
-      };
-    });
+  addTrades: (trades: Trade[]) => {
+    set((state) => ({
+      trades: [...trades, ...state.trades].slice(0, MAX_TRADES),
+    }));
   },
 
   reset: () => set({ trades: [] }),

@@ -16,6 +16,7 @@
     "bignumber.js": "^10.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "comlink": "^4.4.2",
     "dayjs": "^1.11.19",
     "lodash": "^4.17.23",
     "lucide-react": "^0.577.0",
