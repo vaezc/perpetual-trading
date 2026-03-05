@@ -179,7 +179,7 @@ export class BinanceWebSocketClient {
 
 export function createBinanceStreams(symbol: string): string[] {
   const s = symbol.toLowerCase();
-  return [`${s}@depth@100ms`, `${s}@trade`];
+  return [`${s}@depth`, `${s}@trade`];
 }
 
 function isObjectWithEventType(data: unknown): data is { e: string } {

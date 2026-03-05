@@ -14,8 +14,8 @@ import type {
 } from "@/types/worker";
 
 const MAX_LEVELS = 50; // 最终展示的档位数 / Number of levels to display
-const ORDER_BOOK_THROTTLE = 100; // 100ms 限流 / 100ms throttle
-const TRADE_BATCH_INTERVAL = 100; // 100ms 批处理 / 100ms batch interval
+const ORDER_BOOK_THROTTLE = 20; // 20ms 限流 / 20ms throttle
+const TRADE_BATCH_INTERVAL = 50; // 50ms 批处理 / 50ms batch interval
 
 // Order book maps / 订单簿 Map
 const currentBids = new Map<string, string>();
