@@ -1,65 +1,102 @@
-import Image from "next/image";
+/**
+ * Trading Dashboard - Main page with grid layout
+ * 交易仪表盘 - 网格布局主页面
+ */
+
+"use client";
+
+import { useRef } from "react";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import OrderBook from "@/components/OrderBook";
+import TradeTape from "@/components/TradeTape";
+import OrderEntry from "@/components/OrderEntry";
+import MarketSelector from "@/components/MarketSelector";
+import ConnectionStatus from "@/components/ConnectionStatus";
+import MessageRate from "@/components/MessageRate";
+import { useMarketStore } from "@/stores/marketStore";
+import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 export default function Home() {
+  const currentMarket = useMarketStore((state) => state.currentMarket);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { width } = useContainerWidth(containerRef);
+
+  // 连接 WebSocket
+  useWebSocket(currentMarket.symbol);
+
+  // 网格布局配置
+  const layouts = {
+    lg: [
+      { i: "orderbook", x: 0, y: 0, w: 3, h: 14, static: true },
+      { i: "trades", x: 3, y: 0, w: 3, h: 14, static: true },
+      { i: "order-entry", x: 6, y: 0, w: 6, h: 14, static: true },
+    ],
+    md: [
+      { i: "orderbook", x: 0, y: 0, w: 5, h: 14, static: true },
+      { i: "trades", x: 5, y: 0, w: 5, h: 14, static: true },
+      { i: "order-entry", x: 0, y: 14, w: 10, h: 14, static: true },
+    ],
+    sm: [
+      { i: "orderbook", x: 0, y: 0, w: 6, h: 12, static: true },
+      { i: "trades", x: 0, y: 12, w: 6, h: 12, static: true },
+      { i: "order-entry", x: 0, y: 24, w: 6, h: 14, static: true },
+    ],
+    xs: [
+      { i: "orderbook", x: 0, y: 0, w: 4, h: 12, static: true },
+      { i: "trades", x: 0, y: 12, w: 4, h: 12, static: true },
+      { i: "order-entry", x: 0, y: 24, w: 4, h: 14, static: true },
+    ],
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="h-screen bg-black text-white flex flex-col">
+      {/* Header / 顶部栏 */}
+      <header className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
+        <h1 className="text-xl font-bold">Perpetual Trading</h1>
+        <div className="flex items-center gap-4">
+          <MarketSelector />
+          <ConnectionStatus />
+          <MessageRate />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </header>
+
+      {/* Grid Layout / 网格布局 */}
+      <div ref={containerRef} className="flex-1 overflow-hidden">
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={30}
+          width={width}
+          margin={[8, 8]}
+          containerPadding={[8, 8]}
+        >
+          <div
+            key="orderbook"
+            className="bg-gray-900 rounded-lg overflow-hidden"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <OrderBook
+              pricePrecision={currentMarket.pricePrecision}
+              quantityPrecision={currentMarket.quantityPrecision}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <div key="trades" className="bg-gray-900 rounded-lg overflow-hidden">
+            <TradeTape
+              pricePrecision={currentMarket.pricePrecision}
+              quantityPrecision={currentMarket.quantityPrecision}
+            />
+          </div>
+          <div
+            key="order-entry"
+            className="bg-gray-900 rounded-lg overflow-hidden"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <OrderEntry />
+          </div>
+        </ResponsiveGridLayout>
+      </div>
     </div>
   );
 }
