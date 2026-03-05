@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,8 @@ interface OrderFormProps {
 
 function OrderForm({ side }: OrderFormProps) {
   const currentMarket = useMarketStore((state) => state.currentMarket);
+  const priceInputId = useId();
+  const quantityInputId = useId();
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -70,11 +72,12 @@ function OrderForm({ side }: OrderFormProps) {
 
       {/* Price */}
       <div className="space-y-1">
-        <Label className="text-xs text-gray-500">
+        <Label htmlFor={priceInputId} className="text-xs text-gray-500">
           价格({currentMarket.quoteAsset})
         </Label>
         <div className="relative">
           <Input
+            id={priceInputId}
             type="number"
             min="0"
             step="0.01"
@@ -99,11 +102,12 @@ function OrderForm({ side }: OrderFormProps) {
 
       {/* Quantity */}
       <div className="space-y-1">
-        <Label className="text-xs text-gray-500">
+        <Label htmlFor={quantityInputId} className="text-xs text-gray-500">
           数量({currentMarket.baseAsset})
         </Label>
         <div className="relative">
           <Input
+            id={quantityInputId}
             type="number"
             min="0"
             step="0.000001"

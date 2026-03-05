@@ -39,7 +39,10 @@ export default function MarketSelector() {
 
   return (
     <Select value={currentMarket.symbol} onValueChange={handleChange}>
-      <SelectTrigger className="h-7 w-32 bg-gray-800 border-gray-700 text-xs text-white px-2 focus:ring-0 focus:ring-offset-0">
+      <SelectTrigger
+        aria-label="选择市场"
+        className="h-7 w-32 bg-gray-800 border-gray-700 text-xs text-white px-2 focus:ring-0 focus:ring-offset-0"
+      >
         <SelectValue placeholder="选择市场" />
       </SelectTrigger>
       <SelectContent className="bg-gray-800 border-gray-700 text-xs">

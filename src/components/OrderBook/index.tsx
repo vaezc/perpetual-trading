@@ -11,6 +11,7 @@ import { useOrderBookStore } from "@/stores/orderBookStore";
 import { useMarketStore } from "@/stores/marketStore";
 import { formatPrice } from "@/lib/utils";
 import { aggregateByBucket, getBucketDecimals } from "@/lib/orderBook";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -51,13 +52,14 @@ function withTotal(
   levels: { price: string; quantity: string }[],
   maxRows: number,
 ) {
-  return levels.slice(0, maxRows).map((level, index) => ({
-    ...level,
-    total: levels
-      .slice(0, index + 1)
-      .reduce((sum, item) => sum + parseFloat(item.quantity), 0)
-      .toString(),
-  }));
+  let runningTotal = 0;
+  return levels.slice(0, maxRows).map((level) => {
+    runningTotal += parseFloat(level.quantity);
+    return {
+      ...level,
+      total: runningTotal.toString(),
+    };
+  });
 }
 
 export default function OrderBook({
@@ -127,13 +129,18 @@ export default function OrderBook({
           {VIEW_MODES.map(({ mode, Icon, title }) => (
             <Tooltip key={mode}>
               <TooltipTrigger asChild>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setViewMode(mode)}
-                  className={`p-1 rounded hover:bg-gray-700 ${viewMode === mode ? "bg-gray-700" : ""}`}
+                  className={`h-7 w-7 text-gray-200 hover:bg-gray-700 hover:text-white ${
+                    viewMode === mode ? "bg-gray-700 text-white" : ""
+                  }`}
                   aria-label={title}
                 >
                   <Icon active={viewMode === mode} />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>{title}</TooltipContent>
             </Tooltip>
