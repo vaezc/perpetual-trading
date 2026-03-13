@@ -61,7 +61,7 @@ export default function KLineChart({ symbol = 'BTCUSDT' }: KLineChartProps) {
     const volumeData: HistogramData[] = candles.map((c, i) => ({
       time: c.time,
       value: volumes[i],
-      color: c.close >= c.open ? '#26a69a' : '#ef5350',
+      color: c.close >= c.open ? '#0ecb81' : '#ef5350',
     }));
     volumeSeriesRef.current?.setData(volumeData);
   }
@@ -94,11 +94,11 @@ export default function KLineChart({ symbol = 'BTCUSDT' }: KLineChartProps) {
     });
 
     candleSeriesRef.current = chart.addSeries(CandlestickSeries, {
-      upColor: '#26a69a',
+      upColor: '#0ecb81',
       downColor: '#ef5350',
-      borderUpColor: '#26a69a',
+      borderUpColor: '#0ecb81',
       borderDownColor: '#ef5350',
-      wickUpColor: '#26a69a',
+      wickUpColor: '#0ecb81',
       wickDownColor: '#ef5350',
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     });
@@ -282,7 +282,7 @@ export default function KLineChart({ symbol = 'BTCUSDT' }: KLineChartProps) {
       volumeSeriesRef.current?.update({
         time: candle.time,
         value: volume,
-        color: candle.close >= candle.open ? '#26a69a' : '#ef5350',
+        color: candle.close >= candle.open ? '#0ecb81' : '#ef5350',
       });
     };
 
