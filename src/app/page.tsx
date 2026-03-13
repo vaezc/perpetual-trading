@@ -122,8 +122,7 @@ export default function Home() {
             width={width}
             margin={[8, 8]}
             containerPadding={[8, 8]}
-            draggableHandle=".drag-handle"
-            draggableCancel=".no-drag"
+            {...({ draggableHandle: ".drag-handle", draggableCancel: ".no-drag" } as Record<string, string>)}
           >
             <div key="kline">
               <GridPanel>

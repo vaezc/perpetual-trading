@@ -36,8 +36,8 @@ interface OrderFormProps {
 
 function OrderForm({ side }: OrderFormProps) {
   // 订阅基础类型字段，避免对象引用变化触发不必要重渲染 / Subscribe to primitive fields to avoid re-renders on object reference changes
-  const baseAsset = useMarketStore((s) => s.baseAsset);
-  const quoteAsset = useMarketStore((s) => s.quoteAsset);
+  const baseAsset = useMarketStore((s) => s.currentMarket.baseAsset);
+  const quoteAsset = useMarketStore((s) => s.currentMarket.quoteAsset);
   const priceInputId = useId();
   const quantityInputId = useId();
   const [price, setPrice] = useState("");
