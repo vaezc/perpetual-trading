@@ -15,6 +15,7 @@ import MarketSelector from "@/components/MarketSelector";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import MessageRate from "@/components/MessageRate";
 import GridPanel from "@/components/GridPanel";
+import KLineChart from "@/components/KLineChart";
 import { Button } from "@/components/ui/button";
 import { useMarketStore } from "@/stores/marketStore";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
@@ -41,24 +42,28 @@ export default function Home() {
   // 网格布局配置
   const layouts = {
     lg: [
-      { i: "orderbook", x: 0, y: 0, w: 3, h: 14 },
-      { i: "trades", x: 3, y: 0, w: 3, h: 14 },
-      { i: "order-entry", x: 6, y: 0, w: 6, h: 14 },
+      { i: "kline", x: 0, y: 0, w: 9, h: 14 },
+      { i: "order-entry", x: 9, y: 0, w: 3, h: 14 },
+      { i: "orderbook", x: 0, y: 14, w: 3, h: 14 },
+      { i: "trades", x: 3, y: 14, w: 3, h: 14 },
     ],
     md: [
-      { i: "orderbook", x: 0, y: 0, w: 5, h: 14 },
-      { i: "trades", x: 5, y: 0, w: 5, h: 14 },
-      { i: "order-entry", x: 0, y: 14, w: 10, h: 14 },
+      { i: "kline", x: 0, y: 0, w: 10, h: 14 },
+      { i: "orderbook", x: 0, y: 14, w: 5, h: 14 },
+      { i: "trades", x: 5, y: 14, w: 5, h: 14 },
+      { i: "order-entry", x: 0, y: 28, w: 10, h: 14 },
     ],
     sm: [
-      { i: "orderbook", x: 0, y: 0, w: 6, h: 12 },
-      { i: "trades", x: 0, y: 12, w: 6, h: 12 },
-      { i: "order-entry", x: 0, y: 24, w: 6, h: 14 },
+      { i: "kline", x: 0, y: 0, w: 6, h: 14 },
+      { i: "orderbook", x: 0, y: 14, w: 6, h: 12 },
+      { i: "trades", x: 0, y: 26, w: 6, h: 12 },
+      { i: "order-entry", x: 0, y: 38, w: 6, h: 14 },
     ],
     xs: [
-      { i: "orderbook", x: 0, y: 0, w: 4, h: 12 },
-      { i: "trades", x: 0, y: 12, w: 4, h: 12 },
-      { i: "order-entry", x: 0, y: 24, w: 4, h: 14 },
+      { i: "kline", x: 0, y: 0, w: 4, h: 14 },
+      { i: "orderbook", x: 0, y: 14, w: 4, h: 12 },
+      { i: "trades", x: 0, y: 26, w: 4, h: 12 },
+      { i: "order-entry", x: 0, y: 38, w: 4, h: 14 },
     ],
   };
 
@@ -117,7 +122,14 @@ export default function Home() {
             width={width}
             margin={[8, 8]}
             containerPadding={[8, 8]}
+            draggableHandle=".drag-handle"
+            draggableCancel=".no-drag"
           >
+            <div key="kline">
+              <GridPanel>
+                <KLineChart symbol={currentMarket.symbol} />
+              </GridPanel>
+            </div>
             <div key="orderbook">
               <GridPanel isLoading={isLoading} skeleton={<OrderBookSkeleton />}>
                 <OrderBook
